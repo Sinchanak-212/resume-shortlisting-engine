@@ -43,8 +43,19 @@ SKILL_SYNONYMS = {
     "aws": ["aws", "amazon web services", "s3", "ec2"],
     "gcp": ["gcp", "google cloud platform", "google cloud"],
     "kubernetes": ["k8s", "kubernetes"],
-    "html": ["html", "html5", "css", "css3"],
+    "html": ["html", "html5"],
+    "css": ["css", "css3"],
 }
+
+# Minimum ratio of required JD skills that must match for a candidate to be eligible for shortlisting.
+# In a real-world hiring workflow, required skills are treated as mandatory baseline criteria.
+# Set to 1.0 to enforce that all explicitly required skills must be matched.
+MIN_REQUIRED_SKILL_MATCH_RATIO = 1.0
+
+# Minimum overall score required to be considered for shortlist eligibility.
+# This prevents candidates with very low end-to-end fit from consuming shortlist slots
+# even if they match some required skills.
+MIN_SHORTLIST_SCORE = 50.0
 
 # Score Weights
 SCORE_WEIGHTS = {

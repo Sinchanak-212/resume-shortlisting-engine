@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from config import logger, REPORTS_DIR
-from utils.llm import LLMClient
 from agents.parser import PDFParserAgent
 from agents.ocr import OCRFallbackAgent
 from agents.extractor import ResumeExtractorAgent
@@ -69,24 +68,29 @@ def build_pipeline_agents() -> dict:
     (e.g. via st.cache_resource) instead of calling this per-request.
     """
     logger.info("Initializing multi-agent pipeline...")
-    llm_client = LLMClient()
     ocr_agent = OCRFallbackAgent()
     skill_extractor = SkillExtractionAgent()
     return {
-        "llm_client": llm_client,
         "parser_agent": PDFParserAgent(ocr_agent),
-        "extractor_agent": ResumeExtractorAgent(llm_client),
+        "extractor_agent": ResumeExtractorAgent(),
         "normalizer_agent": GradeNormalizerAgent(),
         "skill_extractor": skill_extractor,
         "matcher": MatchingAgent(skill_extractor),
         "scoring_agent": ScoringAgent(),
         "confidence_agent": ConfidenceAgent(),
-        "explanation_agent": ExplanationAgent(llm_client),
+        "explanation_agent": ExplanationAgent(),
         "ranker_agent": RankingAgent(),
     }
 
 
-def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agents: dict = None) -> list:
+def process_resumes(
+    resumes_dir: str,
+    parsed_jd: ParsedJD,
+    limit: int = -1,
+    agents: dict = None,
+    min_required_skill_match_ratio: float | None = None,
+    min_shortlist_score: float | None = None
+) -> list:
     """Orchestrates the multi-agent pipeline to parse, score, and analyze resumes.
 
     Args:
@@ -95,6 +99,9 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
             Passing a cached dict avoids reloading EasyOCR/SentenceTransformer/spaCy
             on every call - important for the Streamlit app, where process_resumes
             is invoked on every button click.
+        min_required_skill_match_ratio: Optional threshold controlling required skill
+            match baseline for shortlisting.
+        min_shortlist_score: Optional minimum score required for shortlist eligibility.
     """
     # BUGFIX (perf): previously this function unconditionally rebuilt every agent -
     # including EasyOCR, SentenceTransformer('all-MiniLM-L6-v2'), and spaCy - on every
@@ -105,7 +112,6 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
     if agents is None:
         agents = build_pipeline_agents()
 
-    llm_client = agents["llm_client"]
     parser_agent = agents["parser_agent"]
     extractor_agent = agents["extractor_agent"]
     normalizer_agent = agents["normalizer_agent"]
@@ -239,7 +245,12 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
             ))
 
     # Step 9: Ranking & Slot Allocation
-    ranked_candidates = ranker_agent.rank_and_allocate_slots(results, parsed_jd)
+    ranked_candidates = ranker_agent.rank_and_allocate_slots(
+        results,
+        parsed_jd,
+        min_required_skill_match_ratio=min_required_skill_match_ratio,
+        min_shortlist_score=min_shortlist_score
+    )
     
     # Step 10: Export Reports
     report_paths = ranker_agent.export_reports(ranked_candidates, parsed_jd)

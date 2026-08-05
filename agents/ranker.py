@@ -4,7 +4,8 @@ import csv
 import json
 from typing import List
 from models.schemas import MatchResult, ParsedJD
-from config import logger, REPORTS_DIR
+import math
+from config import logger, REPORTS_DIR, MIN_REQUIRED_SKILL_MATCH_RATIO, MIN_SHORTLIST_SCORE
 
 
 def _sanitize_slug(text: str) -> str:
@@ -20,7 +21,13 @@ class RankingAgent:
     def __init__(self):
         pass
 
-    def rank_and_allocate_slots(self, candidates: List[MatchResult], parsed_jd: ParsedJD) -> List[MatchResult]:
+    def rank_and_allocate_slots(
+        self,
+        candidates: List[MatchResult],
+        parsed_jd: ParsedJD,
+        min_required_skill_match_ratio: float | None = None,
+        min_shortlist_score: float | None = None,
+    ) -> List[MatchResult]:
         """
         Sorts candidates by score, handles slot allocation, and divides them into Shortlisted vs Reserve lists.
         Failed parses are pushed to the bottom and never receive slots.
@@ -35,17 +42,35 @@ class RankingAgent:
         valid_candidates.sort(key=lambda c: c.score, reverse=True)
 
         # Allocate slots
-        # BUGFIX: parsed_jd.min_cgpa was defined in the schema but never actually enforced
-        # here - a candidate could be ranked #1 by score and still get auto-shortlisted
-        # despite their own CGPA falling below the JD's stated minimum (their explanation
-        # bullet would even say so, while their status said "Shortlisted"). Now a candidate
-        # must both have score > 0 AND meet the CGPA floor to consume a slot; anyone who
-        # fails the floor drops to Reserve and the next qualifying candidate backfills the
-        # slot, since this is a straightforward sequential scan over score-sorted candidates.
+        # A real-world hiring process should enforce mandatory baseline criteria.
+        # That means candidates should not occupy shortlist slots unless they meet:
+        #   1) minimum CGPA requirement,
+        #   2) required skill baseline,
+        #   3) minimum overall fit score,
+        #   4) parse confidence.
         shortlisted_count = 0
+        min_required_skill_match_ratio = MIN_REQUIRED_SKILL_MATCH_RATIO if min_required_skill_match_ratio is None else min_required_skill_match_ratio
+        min_shortlist_score = MIN_SHORTLIST_SCORE if min_shortlist_score is None else min_shortlist_score
+
         for i, cand in enumerate(valid_candidates):
             meets_cgpa_bar = cand.normalized_cgpa >= parsed_jd.min_cgpa
-            if shortlisted_count < parsed_jd.slots and cand.score > 0 and meets_cgpa_bar:
+            required_skills = [m for m in cand.skills_matched if m.skill in parsed_jd.required_skills and m.match_type != "none"]
+            matched_required_count = len(required_skills)
+            required_count = len(parsed_jd.required_skills)
+            required_floor = 0
+            if required_count > 0:
+                required_floor = math.ceil(required_count * min_required_skill_match_ratio)
+            meets_required_floor = matched_required_count >= required_floor
+            meets_score_floor = cand.score >= min_shortlist_score
+            meets_confidence = cand.confidence in ["High", "Medium"]
+
+            if (
+                shortlisted_count < parsed_jd.slots and
+                meets_score_floor and
+                meets_cgpa_bar and
+                meets_required_floor and
+                meets_confidence
+            ):
                 cand.is_shortlisted = True
                 cand.is_reserve = False
                 shortlisted_count += 1

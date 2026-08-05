@@ -18,7 +18,8 @@ st.set_page_config(
 load_dotenv()
 
 # Import pipeline elements
-from main import process_resumes, build_pipeline_agents, DEFAULT_JDS
+import importlib
+import main
 from models.schemas import ParsedJD
 from utils.llm import LLMClient
 from agents.jd_parser import JDParserAgent
@@ -33,7 +34,7 @@ def get_cached_agents():
     st.cache_resource ensures this heavy initialization happens once per server process
     and is reused across reruns/clicks.
     """
-    return build_pipeline_agents()
+    return main.build_pipeline_agents()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -674,10 +675,10 @@ with st.sidebar:
     if jd_source == "Select Predefined Role":
         selected_role_slug = st.selectbox(
             "Choose Role",
-            options=list(DEFAULT_JDS.keys()),
-            format_func=lambda x: DEFAULT_JDS[x].role_name
+            options=list(main.DEFAULT_JDS.keys()),
+            format_func=lambda x: main.DEFAULT_JDS[x].role_name
         )
-        parsed_jd = DEFAULT_JDS[selected_role_slug]
+        parsed_jd = main.DEFAULT_JDS[selected_role_slug]
 
         st.markdown(f"""
         <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15);
@@ -712,6 +713,20 @@ with st.sidebar:
         -1, 30, -1,
         help="-1 processes all uploaded documents"
     )
+
+    min_required_skill_match_ratio = st.slider(
+        "Required skill match threshold",
+        0.0, 1.0, 1.0, 0.1,
+        help="Fraction of required JD skills a candidate must match to be eligible for shortlist."
+    )
+
+    min_shortlist_score = st.slider(
+        "Minimum shortlist score",
+        0.0, 100.0, 50.0, 5.0,
+        help="Minimum overall score a candidate must achieve to consume a shortlist slot."
+    )
+
+    st.caption("Real-world baseline: candidates must meet required skills and a minimum fit score before being shortlisted.")
 
     st.markdown("<div style='height: 8px'></div>", unsafe_allow_html=True)
 
@@ -788,11 +803,14 @@ if process_btn:
 
     with st.spinner("Running multi-agent pipeline..."):
         try:
-            candidates, report_paths = process_resumes(
+            importlib.reload(main)
+            candidates, report_paths = main.process_resumes(
                 resumes_dir=str(temp_dir),
                 parsed_jd=parsed_jd,
                 limit=testing_limit,
-                agents=get_cached_agents()
+                agents=get_cached_agents(),
+                min_required_skill_match_ratio=min_required_skill_match_ratio,
+                min_shortlist_score=min_shortlist_score,
             )
             st.session_state.ranked_candidates = candidates
             st.session_state.report_paths = report_paths
