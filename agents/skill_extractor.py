@@ -1,27 +1,47 @@
 import re
 import logging
-import spacy
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from config import logger, SKILL_SYNONYMS
-from rapidfuzz import process, fuzz
-from sentence_transformers import SentenceTransformer
-import numpy as np
+from rapidfuzz import fuzz
+
+try:
+    import spacy
+except Exception:  # pragma: no cover - optional dependency
+    spacy = None
+
+try:
+    from sentence_transformers import SentenceTransformer
+except Exception:  # pragma: no cover - optional dependency
+    SentenceTransformer = None
+
+from utils.skill_mapping import (
+    get_skill_aliases,
+    get_skill_metadata,
+    normalize_skill_name,
+)
 
 class SkillExtractionAgent:
     def __init__(self):
         self.nlp = None
         self._init_spacy()
         
-        # Initialize Sentence Transformer locally
-        logger.info("Initializing SentenceTransformer (all-MiniLM-L6-v2) for semantic matching...")
-        try:
-            self.model = SentenceTransformer("all-MiniLM-L6-v2")
-            logger.info("SentenceTransformer initialized successfully.")
-        except Exception as e:
-            logger.warning(f"Failed to load SentenceTransformer: {e}. Semantic matches will fall back to exact matches.")
+        # Initialize Sentence Transformer locally when available
+        if SentenceTransformer is None:
+            logger.warning("sentence-transformers is not available; semantic matches will fall back to fuzzy matching.")
             self.model = None
+        else:
+            logger.info("Initializing SentenceTransformer (all-MiniLM-L6-v2) for semantic matching...")
+            try:
+                self.model = SentenceTransformer("all-MiniLM-L6-v2")
+                logger.info("SentenceTransformer initialized successfully.")
+            except Exception as e:
+                logger.warning(f"Failed to load SentenceTransformer: {e}. Semantic matches will fall back to exact matches.")
+                self.model = None
 
     def _init_spacy(self):
+        if spacy is None:
+            self.nlp = None
+            return
         try:
             self.nlp = spacy.load("en_core_web_sm")
             logger.info("spaCy en_core_web_sm model loaded successfully.")
@@ -48,18 +68,22 @@ class SkillExtractionAgent:
         return self._all_skill_terms_cache
 
     def normalize_skill(self, skill: str) -> str:
-        """
-        Maps a skill term to its canonical form using the synonym dictionary.
-        """
-        skill_clean = skill.strip().lower()
-        for canonical, synonyms in SKILL_SYNONYMS.items():
-            if skill_clean == canonical.lower():
-                return canonical
-            for syn in synonyms:
-                if skill_clean == syn.lower():
-                    return canonical
-        # Capitalize first letter of each word if not in dictionary
-        return " ".join([w.capitalize() for w in skill.split()])
+        """Normalize a skill to a canonical, backward-compatible name."""
+        return normalize_skill_name(skill)
+
+    def get_skill_hierarchy(self, skill: str) -> List[str]:
+        """Return the skill hierarchy for a given skill, e.g. TensorFlow -> AI/ML -> Deep Learning."""
+        metadata = get_skill_metadata(skill)
+        return list(metadata.hierarchy)
+
+    def get_skill_category(self, skill: str) -> str:
+        """Return the mapped skill category, e.g. Frontend, Backend, Cloud, DevOps, Database, AI/ML."""
+        metadata = get_skill_metadata(skill)
+        return metadata.category
+
+    def get_skill_aliases(self, skill: str) -> List[str]:
+        """Return a list of aliases for a skill, including the canonical name."""
+        return get_skill_aliases(skill)
 
     def extract_and_enrich_skills(self, parsed_skills: List[str], raw_text: str, projects: List[Any], experiences: List[Any]) -> List[Dict[str, Any]]:
         """
@@ -75,12 +99,16 @@ class SkillExtractionAgent:
         # 1. Process skills initially extracted by LLM
         for skill in parsed_skills:
             normalized = self.normalize_skill(skill)
-            # Higher confidence if explicitly listed in the skills section
+            metadata = get_skill_metadata(skill)
             enriched_skills[normalized] = {
                 "skill": skill,
                 "normalized": normalized,
                 "confidence": 0.9,
-                "sources": ["skills_section"]
+                "sources": ["skills_section"],
+                "category": metadata.category,
+                "hierarchy": list(metadata.hierarchy),
+                "aliases": list(metadata.aliases),
+                "mapping_type": metadata.mapping_type,
             }
 
         # 2. Check projects for inline skill mentions
@@ -101,16 +129,26 @@ class SkillExtractionAgent:
                             break
                 
                 if matched:
-                    if canonical in enriched_skills:
-                        enriched_skills[canonical]["confidence"] = min(enriched_skills[canonical]["confidence"] + 0.1, 1.0)
-                        if "projects" not in enriched_skills[canonical]["sources"]:
-                            enriched_skills[canonical]["sources"].append("projects")
+                    normalized = self.normalize_skill(canonical)
+                    metadata = get_skill_metadata(canonical)
+                    if normalized in enriched_skills:
+                        enriched_skills[normalized]["confidence"] = min(enriched_skills[normalized]["confidence"] + 0.1, 1.0)
+                        if "projects" not in enriched_skills[normalized]["sources"]:
+                            enriched_skills[normalized]["sources"].append("projects")
+                        enriched_skills[normalized]["category"] = enriched_skills[normalized].get("category") or metadata.category
+                        enriched_skills[normalized]["hierarchy"] = list(metadata.hierarchy)
+                        enriched_skills[normalized]["aliases"] = list(dict.fromkeys(enriched_skills[normalized].get("aliases", []) + list(metadata.aliases)))
+                        enriched_skills[normalized]["mapping_type"] = metadata.mapping_type
                     else:
-                        enriched_skills[canonical] = {
+                        enriched_skills[normalized] = {
                             "skill": canonical,
-                            "normalized": canonical,
-                            "confidence": 0.7, # Lower starting confidence if only found in project description
-                            "sources": ["projects"]
+                            "normalized": normalized,
+                            "confidence": 0.7,
+                            "sources": ["projects"],
+                            "category": metadata.category,
+                            "hierarchy": list(metadata.hierarchy),
+                            "aliases": list(metadata.aliases),
+                            "mapping_type": metadata.mapping_type,
                         }
 
         # 3. Check experience/internships
@@ -131,16 +169,26 @@ class SkillExtractionAgent:
                             break
                 
                 if matched:
-                    if canonical in enriched_skills:
-                        enriched_skills[canonical]["confidence"] = min(enriched_skills[canonical]["confidence"] + 0.1, 1.0)
-                        if "experience" not in enriched_skills[canonical]["sources"]:
-                            enriched_skills[canonical]["sources"].append("experience")
+                    normalized = self.normalize_skill(canonical)
+                    metadata = get_skill_metadata(canonical)
+                    if normalized in enriched_skills:
+                        enriched_skills[normalized]["confidence"] = min(enriched_skills[normalized]["confidence"] + 0.1, 1.0)
+                        if "experience" not in enriched_skills[normalized]["sources"]:
+                            enriched_skills[normalized]["sources"].append("experience")
+                        enriched_skills[normalized]["category"] = enriched_skills[normalized].get("category") or metadata.category
+                        enriched_skills[normalized]["hierarchy"] = list(metadata.hierarchy)
+                        enriched_skills[normalized]["aliases"] = list(dict.fromkeys(enriched_skills[normalized].get("aliases", []) + list(metadata.aliases)))
+                        enriched_skills[normalized]["mapping_type"] = metadata.mapping_type
                     else:
-                        enriched_skills[canonical] = {
+                        enriched_skills[normalized] = {
                             "skill": canonical,
-                            "normalized": canonical,
+                            "normalized": normalized,
                             "confidence": 0.7,
-                            "sources": ["experience"]
+                            "sources": ["experience"],
+                            "category": metadata.category,
+                            "hierarchy": list(metadata.hierarchy),
+                            "aliases": list(metadata.aliases),
+                            "mapping_type": metadata.mapping_type,
                         }
 
         # 4. Use spaCy NER to extract technologies from raw text as fallback
@@ -152,12 +200,18 @@ class SkillExtractionAgent:
                 token_lower = token.text.lower()
                 if token.pos_ in ["PROPN", "NOUN"] and token_lower in all_terms:
                     canonical = all_terms[token_lower]
-                    if canonical not in enriched_skills:
-                        enriched_skills[canonical] = {
+                    normalized = self.normalize_skill(canonical)
+                    metadata = get_skill_metadata(canonical)
+                    if normalized not in enriched_skills:
+                        enriched_skills[normalized] = {
                             "skill": token.text,
-                            "normalized": canonical,
+                            "normalized": normalized,
                             "confidence": 0.6,
-                            "sources": ["nlp_ner"]
+                            "sources": ["nlp_ner"],
+                            "category": metadata.category,
+                            "hierarchy": list(metadata.hierarchy),
+                            "aliases": list(metadata.aliases),
+                            "mapping_type": metadata.mapping_type,
                         }
 
         return list(enriched_skills.values())

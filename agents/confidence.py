@@ -7,29 +7,14 @@ class ConfidenceAgent:
         pass
 
     def evaluate_quality_and_confidence(self, parsed_resume: ParsedResume, parse_status: str, parse_reason: str) -> tuple[str, str]:
-        """
-        Assesses the quality of the extraction and assigns an overall confidence rating.
-        Returns:
-            Tuple[str, str]: (parse_quality, confidence_level)
-            parse_quality: 'Clean', 'Partial', 'Failed'
-            confidence_level: 'High', 'Medium', 'Low'
-        """
+        """Assess parse quality and assign a practical confidence level."""
         logger.info("Evaluating parse quality and confidence...")
 
-        # 1. Check if the parser failed, or if BOTH crucial identifier fields are missing.
-        # BUGFIX: previously this triggered "Failed" if name alone was missing (even with a
-        # valid email present), and both branches of the inner if/else returned the same
-        # result anyway - so resumes with a perfectly good email but a name the LLM didn't
-        # confidently label were being discarded and scored 0. Only fail when we truly have
-        # no way to identify the candidate.
         if parse_status == "Failed" or (not parsed_resume.name and not parsed_resume.email):
             logger.warning("Crucial identifier fields (name, email) are missing. Flagging as Failed parse.")
             return "Failed", "Low"
 
-        # 2. Check if parser indicated OCR was used
         is_ocr = "OCR" in parse_reason or "pdfplumber" in parse_reason
-        
-        # 3. Check for missing vital sections
         missing_fields = []
         if not parsed_resume.email:
             missing_fields.append("email")
@@ -38,29 +23,15 @@ class ConfidenceAgent:
         if not parsed_resume.projects and not parsed_resume.experience and not parsed_resume.internships:
             missing_fields.append("practical_experience")
 
-        # 4. Determine Parse Quality
-        if is_ocr:
-            quality = "Partial"
-        elif len(missing_fields) >= 2:
+        if is_ocr or len(missing_fields) >= 2:
             quality = "Partial"
         else:
             quality = "Clean"
 
-        # 5. Determine Confidence Level
-        if quality == "Failed":
-            confidence = "Low"
-        elif quality == "Partial":
-            # Partial parse must produce Medium or Low confidence at most (Tricky Part 4)
-            if "skills" in missing_fields or is_ocr:
-                confidence = "Low"
-            else:
-                confidence = "Medium"
+        if quality == "Partial":
+            confidence = "Low" if ("skills" in missing_fields or is_ocr) else "Medium"
         else:
-            # Clean parse: Can be High or Medium
-            if len(missing_fields) == 1:
-                confidence = "Medium"
-            else:
-                confidence = "High"
+            confidence = "High" if len(missing_fields) == 0 else "Medium"
 
-        logger.info(f"Evaluated Quality: {quality}, Confidence: {confidence}. Reason: {parse_reason}")
+        logger.info("Evaluated Quality: %s, Confidence: %s. Reason: %s", quality, confidence, parse_reason)
         return quality, confidence

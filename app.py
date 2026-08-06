@@ -1058,6 +1058,10 @@ if st.session_state.ranked_candidates:
                     <span class="stat-value">{cand.normalized_cgpa:.2f} / 10.0</span>
                 </div>
                 <div class="stat-row">
+                    <span class="stat-label">ATS Score</span>
+                    <span class="stat-value">{cand.ats_score:.1f} / 100</span>
+                </div>
+                <div class="stat-row">
                     <span class="stat-label">Parse Quality</span>
                     <span class="stat-value">{cand.parse_quality}</span>
                 </div>

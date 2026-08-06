@@ -1,10 +1,10 @@
 import fitz  # PyMuPDF
 import pdfplumber
-import logging
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Tuple
 from config import logger
 from agents.ocr import OCRFallbackAgent
+from utils.text_processing import normalize_resume_text
 
 class PDFParserAgent:
     def __init__(self, ocr_agent: OCRFallbackAgent):
@@ -134,6 +134,7 @@ class PDFParserAgent:
             
             doc.close()
             text = "\n\n=== PAGE BREAK ===\n\n".join(extracted_pages)
+            text = normalize_resume_text(text)
             logger.info(f"Successfully parsed {path.name} as {layout_type} PDF.")
             return text, "Clean", f"Extracted successfully as {layout_type} layout"
 
@@ -150,11 +151,13 @@ class PDFParserAgent:
                             pages_text.append(extracted)
                     text = "\n\n".join(pages_text)
                 if len(text.split()) > 50:
+                    text = normalize_resume_text(text)
                     return text, "Partial", "Extracted using pdfplumber fallback (layout preservation might be degraded)"
                 else:
                     # Try OCR fallback
                     text, ocr_success = self.ocr_agent.run_ocr(pdf_path)
                     if ocr_success:
+                        text = normalize_resume_text(text)
                         return text, "Partial", "Parsed using OCR fallback after standard parser failed"
                     else:
                         return "", "Failed", f"Parser crashed: {str(e)} and OCR fallback failed"

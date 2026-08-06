@@ -207,6 +207,7 @@ def process_resumes(
 
             # Step 7: Score Computation
             score, breakdown_str = scoring_agent.calculate_score(parsed_resume, normalized_cgpa, skill_matches, parsed_jd)
+            ats_score, ats_breakdown = scoring_agent.analyze_ats_compliance(parsed_resume, raw_text)
 
             # Step 8: Explanation Generation
             explanation_bullets = explanation_agent.generate_explanation(
@@ -225,8 +226,18 @@ def process_resumes(
                 skills_extracted=[s["skill"] for s in enriched_skills],
                 skills_matched=skill_matches,
                 explanation=explanation_bullets,
-                is_shortlisted=False, # Ranker will set this
-                is_reserve=False     # Ranker will set this
+                score_breakdown=[breakdown_str],
+                ats_score=ats_score,
+                ats_breakdown=ats_breakdown,
+                is_shortlisted=False,
+                is_reserve=False,
+                metadata={
+                    "skills": [s["normalized"] for s in enriched_skills],
+                    "field_confidence": parsed_resume.field_confidence,
+                    "experience_years": parsed_resume.years_of_experience,
+                    "current_company": parsed_resume.current_company,
+                    "current_designation": parsed_resume.current_designation,
+                },
             ))
 
         except Exception as e:

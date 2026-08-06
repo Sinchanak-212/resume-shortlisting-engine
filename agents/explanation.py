@@ -14,41 +14,59 @@ class ExplanationAgent:
         skill_matches: List[SkillMatchDetail],
         score: float,
         normalized_cgpa: float,
-        confidence: str
+        confidence: str,
     ) -> List[str]:
-        """
-        Generates deterministic explanation bullets using resume and JD matching details.
-        This avoids slow external LLM calls for every candidate.
-        """
+        """Create deterministic recruiter-facing explanation bullets."""
         logger.info("Generating candidate matches explanation locally.")
 
         matched_required = [m.skill for m in skill_matches if m.match_type != "none" and m.skill in parsed_jd.required_skills]
         matched_preferred = [m.skill for m in skill_matches if m.match_type != "none" and m.skill in parsed_jd.preferred_skills]
         missing_required = [m.skill for m in skill_matches if m.match_type == "none" and m.skill in parsed_jd.required_skills]
         missing_preferred = [m.skill for m in skill_matches if m.match_type == "none" and m.skill in parsed_jd.preferred_skills]
-
-        contact_info = parsed_resume.email or parsed_resume.phone or "contact details missing"
         education_ok = normalized_cgpa >= parsed_jd.min_cgpa if normalized_cgpa is not None else False
 
-        strength_parts = []
+        strengths = []
         if matched_required:
-            strength_parts.append(f"Matched {len(matched_required)} required skills: {', '.join(matched_required[:3])}")
+            strengths.append(f"Matched {len(matched_required)} required skills: {', '.join(matched_required[:3])}")
         if matched_preferred:
-            strength_parts.append(f"Also aligned with preferred skills: {', '.join(matched_preferred[:3])}")
+            strengths.append(f"Aligned with preferred skills: {', '.join(matched_preferred[:3])}")
         if parsed_resume.projects:
-            strength_parts.append(f"Has {len(parsed_resume.projects)} project entries")
+            strengths.append(f"Has {len(parsed_resume.projects)} project entry/entries")
         if parsed_resume.experience or parsed_resume.internships:
-            strength_parts.append(f"Includes work/internship experience")
-        if not strength_parts:
-            strength_parts.append("Limited explicit skill or experience information found")
+            strengths.append("Includes work or internship experience")
+        if parsed_resume.certifications:
+            strengths.append("Shows professional certifications")
+        if not strengths:
+            strengths.append("Limited explicit experience or skill evidence was found")
 
-        bullet1 = ". ".join(strength_parts) + "."
-        bullet2 = (
-            f"Missing required skills: {', '.join(missing_required) if missing_required else 'None'}; "
-            f"preferred skills missing: {', '.join(missing_preferred) if missing_preferred else 'None'}."
-        )
-        bullet3 = (
-            f"Score {score:.0f}/100 with CGPA {'meets' if education_ok else 'below'} the requirement ({normalized_cgpa:.2f} vs {parsed_jd.min_cgpa:.2f}) and confidence set to {confidence}."
-        )
+        weaknesses = []
+        if missing_required:
+            weaknesses.append(f"Missing required skills: {', '.join(missing_required[:3])}")
+        if missing_preferred:
+            weaknesses.append(f"Missing preferred skills: {', '.join(missing_preferred[:3])}")
+        if not education_ok:
+            weaknesses.append("CGPA is below the stated requirement")
+        if not weaknesses:
+            weaknesses.append("No major gaps identified")
 
-        return [bullet1, bullet2, bullet3]
+        improvement_suggestions = []
+        if missing_required:
+            improvement_suggestions.append("Add evidence for the missing required skills in future resumes")
+        if parsed_resume.github or parsed_resume.linkedin or parsed_resume.portfolio:
+            improvement_suggestions.append("Keep professional profiles up to date and link them clearly")
+        else:
+            improvement_suggestions.append("Add GitHub, LinkedIn, or portfolio links to strengthen profile credibility")
+        if not parsed_resume.projects:
+            improvement_suggestions.append("Include measurable project outcomes to strengthen the profile")
+
+        recruiter_summary = (
+            f"Overall fit is {score:.0f}/100 with {confidence.lower()} confidence. "
+            f"The candidate shows a solid match in {'; '.join(strengths[:2]) if strengths else 'core competencies'}."
+        )
+        interview_recommendation = "Proceed to interview" if score >= 70 else ("Hold for secondary review" if score >= 50 else "Decline or revisit")
+
+        return [
+            ". ".join(strengths) + ".",
+            ". ".join(weaknesses) + ".",
+            f"Score {score:.0f}/100 with CGPA {'meets' if education_ok else 'below'} the requirement ({normalized_cgpa:.2f} vs {parsed_jd.min_cgpa:.2f}); recruiter summary: {recruiter_summary}; interview recommendation: {interview_recommendation}.",
+        ]
