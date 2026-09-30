@@ -6,6 +6,8 @@ import fitz  # PyMuPDF to render pages
 from PIL import Image
 import io
 
+MAX_OCR_PAGES = 3  # CPU EasyOCR can take 30-90s per page; resumes rarely need more
+
 class OCRFallbackAgent:
     def __init__(self):
         self.easyocr_reader = None
@@ -45,6 +47,9 @@ class OCRFallbackAgent:
             ocr_text_pages = []
             
             for i, page in enumerate(doc):
+                if i >= MAX_OCR_PAGES:
+                    logger.info(f"OCR page cap ({MAX_OCR_PAGES}) reached; skipping remaining pages.")
+                    break
                 logger.info(f"Rendering page {i+1} for OCR...")
                 # Render page to a high-resolution pixmap
                 pix = page.get_pixmap(dpi=150)

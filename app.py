@@ -40,15 +40,15 @@ def get_cached_agents():
 # PREMIUM CSS THEME — Glassmorphism Dark Mode with Animations
 # ──────────────────────────────────────────────────────────────────────────────
 st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-    :root { --bg:#f6f8fb; --surface:#fff; --line:#e2e8f0; --ink:#0f172a; --muted:#475569; --accent:#1d4ed8; --accent-soft:#eff4ff; --ok:#047857; --warn:#b45309; --bad:#b91c1c; }
-    .stApp { background: var(--bg); color: var(--ink); font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; }
+    :root { --bg:#050a18; --surface:rgba(255,255,255,.04); --line:rgba(148,163,184,.18); --ink:#e8eefc; --muted:#94a3b8; --accent:#22d3ee; --accent-soft:rgba(34,211,238,.1); --ok:#34d399; --warn:#fbbf24; --bad:#f87171; }
+    .stApp { background: radial-gradient(1.5px 1.5px at 12% 18%,#fff8,transparent),radial-gradient(1px 1px at 30% 70%,#fff6,transparent),radial-gradient(1.5px 1.5px at 55% 25%,#fff7,transparent),radial-gradient(1px 1px at 78% 60%,#fff6,transparent),radial-gradient(1.5px 1.5px at 90% 15%,#fff8,transparent),radial-gradient(1px 1px at 65% 88%,#fff5,transparent),linear-gradient(180deg,#050a18,#0a1330 60%,#050a18); color: var(--ink); font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; }
     #MainMenu, footer, header { visibility: hidden; }
     .block-container { max-width: 1180px; padding-top: 2rem; }
     h1, h2, h3, h4, h5, h6 { color: var(--ink); font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
     p, span, div, label { font-family: 'Inter', sans-serif; }
-    section[data-testid="stSidebar"] { background: var(--surface); border-right: 1px solid var(--line); }
+    section[data-testid="stSidebar"] { background: #070d20; border-right: 1px solid var(--line); }
     section[data-testid="stSidebar"] .stMarkdown h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
     .custom-divider { height: 1px; background: var(--line); margin: 20px 0; }
 
@@ -60,7 +60,7 @@ st.markdown("""
     /* Cards */
     .features-grid, .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .feature-card, .kpi-card, .inspector-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
-    .feature-card:hover, .kpi-card:hover { border-color: #c7d2fe; box-shadow: 0 4px 12px rgba(15,23,42,.06); }
+    .feature-card:hover, .kpi-card:hover { border-color: rgba(34,211,238,.35); box-shadow: 0 4px 12px rgba(15,23,42,.06); }
     .feature-icon, .kpi-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); border-radius: 8px; font-size: 1.1rem; margin-bottom: 12px; }
     .feature-title { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
     .feature-desc, .kpi-label { font-size: .86rem; color: var(--muted); line-height: 1.5; }
@@ -71,7 +71,7 @@ st.markdown("""
     /* Workflow */
     .workflow-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; }
     .wf-step { display: flex; align-items: center; gap: 8px; font-size: .86rem; font-weight: 500; color: var(--ink); }
-    .wf-step-num, .sidebar-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .72rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+    .wf-step-num, .sidebar-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #04121f; font-size: .72rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
     .wf-arrow { color: #475569; }
     .sidebar-step { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
     .sidebar-step-text { font-size: .85rem; color: var(--muted); }
@@ -88,9 +88,9 @@ st.markdown("""
     .profile-name { font-size: 1.15rem; font-weight: 600; color: var(--ink); }
     .profile-file { font-size: .8rem; color: var(--muted); }
     .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; border: 1px solid transparent; margin-right: 6px; }
-    .badge-shortlisted, .badge-conf-high { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
-    .badge-reserve, .badge-conf-medium { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
-    .badge-failed, .badge-conf-low { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .badge-shortlisted, .badge-conf-high { background: rgba(52,211,153,.12); color: var(--ok); border-color: rgba(52,211,153,.35); }
+    .badge-reserve, .badge-conf-medium { background: rgba(251,191,36,.12); color: var(--warn); border-color: rgba(251,191,36,.35); }
+    .badge-failed, .badge-conf-low { background: rgba(248,113,113,.12); color: var(--bad); border-color: rgba(248,113,113,.35); }
     .score-ring-container { display: flex; flex-direction: column; align-items: center; gap: 8px; }
     .score-ring { position: relative; width: 110px; height: 110px; }
     .score-ring svg { transform: rotate(-90deg); }
@@ -104,18 +104,18 @@ st.markdown("""
 
     /* Skill chips and explanation */
     .skill-chip { display: inline-block; padding: 4px 11px; margin: 0 6px 6px 0; border-radius: 6px; font-size: .8rem; font-weight: 500; border: 1px solid var(--line); background: #0f172a; color: var(--ink); }
-    .chip-exact { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
-    .chip-synonym { background: var(--accent-soft); color: var(--accent); border-color: #c7d2fe; }
-    .chip-partial, .chip-implicit { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
-    .chip-none { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .chip-exact { background: rgba(52,211,153,.12); color: var(--ok); border-color: rgba(52,211,153,.35); }
+    .chip-synonym { background: var(--accent-soft); color: var(--accent); border-color: rgba(34,211,238,.35); }
+    .chip-partial, .chip-implicit { background: rgba(251,191,36,.12); color: var(--warn); border-color: rgba(251,191,36,.35); }
+    .chip-none { background: rgba(248,113,113,.12); color: var(--bad); border-color: rgba(248,113,113,.35); }
     .chip-extracted { background: #0f172a; color: var(--muted); }
     .explanation-list { display: flex; flex-direction: column; gap: 10px; }
     .explanation-item { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 14px 16px; color: var(--ink); line-height: 1.55; }
     .explanation-bullet { color: var(--accent); font-weight: 600; }
 
     /* Streamlit widgets */
-    button[data-testid="stBaseButton-primary"] { background: var(--accent) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; }
-    button[data-testid="stBaseButton-primary"]:hover { background: #1e40af !important; }
+    button[data-testid="stBaseButton-primary"] { background: var(--accent) !important; color: #04121f !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; }
+    button[data-testid="stBaseButton-primary"]:hover { background: #67e8f9 !important; }
     .stDownloadButton > button { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-weight: 500; }
     .stDownloadButton > button:hover { border-color: var(--accent); color: var(--accent); }
     .stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom: 1px solid var(--line); }
@@ -124,6 +124,29 @@ st.markdown("""
     .stTabs [data-baseweb="tab-highlight"] { background: var(--accent); }
     .stDataFrame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
     @media (max-width: 768px) { .hero-container { padding: 24px; } .hero-title { font-size: 1.6rem; } }
+
+    /* Cinematic landing (nav + hero) */
+    .nav { display:flex; align-items:center; justify-content:space-between; padding:14px 6px 22px; }
+    .nav-logo { font-weight:700; font-size:.95rem; color:var(--ink); } .nav-logo b { color:var(--accent); }
+    .nav-links { display:flex; align-items:center; gap:26px; font-size:.74rem; font-weight:600; color:var(--ink); }
+    .nav-links span.on { border-bottom:2px solid var(--accent); padding-bottom:10px; margin-bottom:-12px; }
+    .nav-pill { background:#e8eefc; color:#050a18 !important; padding:7px 16px; border-radius:999px; text-decoration:none; font-size:.72rem; font-weight:700; }
+    .hero-container { position:relative; overflow:hidden; min-height:560px; text-align:center; padding:70px 40px 0; border-radius:16px; border:1px solid var(--line);
+        background:radial-gradient(ellipse at 50% 120%,rgba(37,99,235,.35),transparent 60%),rgba(5,10,24,.6); }
+    .hero-eyebrow { letter-spacing:.42em; font-size:.8rem; font-weight:600; color:var(--ink); text-transform:uppercase; }
+    .hero-title { font-family:'Cormorant Garamond','Times New Roman',serif !important; font-size:5.6rem !important; font-weight:500 !important; letter-spacing:.02em; line-height:1.05; margin:10px 0 14px; color:#fff !important; }
+    .hero-line { width:58px; height:2px; background:var(--accent); margin:0 auto 22px; }
+    .hero-subtitle { font-size:.82rem !important; color:var(--ink) !important; opacity:.85; max-width:470px; margin:0 auto 34px !important; line-height:1.7 !important; }
+    .hero-cta { display:inline-block; background:#e8eefc; color:#050a18; font-weight:700; font-size:.78rem; padding:11px 30px; border-radius:999px; box-shadow:0 0 30px rgba(125,211,252,.35); position:relative; z-index:3; }
+    .hero-hint { margin-top:12px; font-size:.72rem; color:var(--muted); position:relative; z-index:3; }
+    .planet { position:absolute; top:52%; width:84px; height:84px; border-radius:50%; z-index:1; }
+    .planet.l { left:-42px; background:radial-gradient(circle at 65% 40%,#d6dde6,#7b8794 60%,#2b3340); }
+    .planet.r { right:-42px; background:radial-gradient(circle at 35% 40%,#ffb27a,#d2501f 60%,#5a1d0a); }
+    .planet-label { position:absolute; top:calc(52% + 30px); font-family:'Cormorant Garamond',serif; letter-spacing:.2em; font-size:.85rem; color:var(--ink); }
+    .planet-label.l { left:56px; } .planet-label.r { right:56px; }
+    .horizon { position:absolute; left:-25%; right:-25%; bottom:-420px; height:520px; border-radius:50%; z-index:0;
+        background:radial-gradient(ellipse at 50% 0%,#bfe3ff 0%,#3b8df0 8%,#1646a8 28%,#0a1f55 55%,#050a18 75%); box-shadow:0 -6px 70px rgba(59,130,246,.65); }
+    @media (max-width:768px) { .hero-title { font-size:3.2rem !important; } .planet,.planet-label,.nav-links span { display:none; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -146,7 +169,7 @@ with st.sidebar:
     st.markdown("""
     <div style="text-align:center; padding: 16px 0 8px;">
         <span style="font-size: 2rem;">💼</span>
-        <div style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-top: 4px; letter-spacing: -0.02em;">
+        <div style="font-size: 1.1rem; font-weight: 800; color: #e8eefc; margin-top: 4px; letter-spacing: -0.02em;">
             Resume Engine
         </div>
         <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">AI-Powered Shortlisting</div>
@@ -203,8 +226,8 @@ with st.sidebar:
         st.markdown(f"""
         <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15);
                     border-radius: 12px; padding: 14px; margin-top: 8px; font-size: 0.82rem;">
-            <div style="color: #1d4ed8; font-weight: 600; margin-bottom: 6px;">📋 {parsed_jd.role_name}</div>
-            <div style="color: #475569;">
+            <div style="color: #7dd3fc; font-weight: 600; margin-bottom: 6px;">📋 {parsed_jd.role_name}</div>
+            <div style="color: #94a3b8;">
                 <b>Required:</b> {', '.join(parsed_jd.required_skills[:4])}{'...' if len(parsed_jd.required_skills) > 4 else ''}<br/>
                 <b>CGPA ≥</b> {parsed_jd.min_cgpa:.1f} &nbsp;|&nbsp; <b>Slots:</b> {parsed_jd.slots}
             </div>
@@ -293,19 +316,15 @@ if process_btn:
     progress_bar = st.progress(0)
     status_container = st.empty()
 
-    # Show animated pipeline stages
-    import time
-    for i, stage in enumerate(pipeline_stages[:3]):
-        progress_bar.progress((i + 1) / len(pipeline_stages))
-        status_container.markdown(f"""
-        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px;
-                    background:#eff4ff; border:1px solid #c7d2fe;
-                    border-radius:12px; margin:8px 0;">
-            <div style="font-size:1.2rem;">{stage.split(' ')[0]}</div>
-            <div style="color:#1d4ed8; font-weight:600; font-size:0.9rem;">{' '.join(stage.split(' ')[1:])}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        time.sleep(0.3)
+    def on_progress(done, total, name):
+        progress_bar.progress(done / total)
+        status_container.markdown(
+            f"""<div style="padding:12px 16px; background:rgba(34,211,238,.08); border:1px solid rgba(34,211,238,.3); border-radius:10px;">
+            <b style="color:#7dd3fc;">Processed {done} of {total}</b>
+            <span style="color:#94a3b8;"> &middot; last finished: {name}</span></div>""",
+            unsafe_allow_html=True)
+
+    status_container.info("Loading AI models on first run (can take a minute), then processing resumes in parallel...")
 
     pipeline_ok = False
     with st.spinner("Running multi-agent pipeline..."):
@@ -314,7 +333,8 @@ if process_btn:
                 resumes_dir=str(temp_dir),
                 parsed_jd=parsed_jd,
                 limit=testing_limit,
-                agents=get_cached_agents()
+                agents=get_cached_agents(),
+                progress_cb=on_progress
             )
             st.session_state.ranked_candidates = candidates
             st.session_state.report_paths = report_paths
@@ -324,7 +344,6 @@ if process_btn:
             st.exception(e)
 
     progress_bar.progress(1.0)
-    time.sleep(0.3)
     progress_bar.empty()
     status_container.empty()
     if pipeline_ok:
@@ -350,11 +369,11 @@ def get_confidence_badge(confidence):
 def get_score_color(score):
     """Returns hex color based on score value."""
     if score >= 70:
-        return "#047857"
+        return "#34d399"
     elif score >= 45:
-        return "#b45309"
+        return "#fbbf24"
     else:
-        return "#b91c1c"
+        return "#f87171"
 
 def render_score_ring(score):
     """Returns HTML for a circular score indicator."""
@@ -594,10 +613,10 @@ if st.session_state.ranked_candidates:
             # Legend
             st.markdown("""
             <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:0.78rem; color:#64748b;">
-                <span><span style="color:#047857">✓</span> Exact</span>
-                <span><span style="color:#1d4ed8">≈</span> Synonym</span>
-                <span><span style="color:#b45309">◐</span> Partial/Implicit</span>
-                <span><span style="color:#b91c1c">✗</span> Not Found</span>
+                <span><span style="color:#34d399">✓</span> Exact</span>
+                <span><span style="color:#7dd3fc">≈</span> Synonym</span>
+                <span><span style="color:#fbbf24">◐</span> Partial/Implicit</span>
+                <span><span style="color:#f87171">✗</span> Not Found</span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -658,12 +677,21 @@ if st.session_state.ranked_candidates:
 # ──────────────────────────────────────────────────────────────────────────────
 else:
     st.markdown("""
+    <div class="nav">
+        <div class="nav-logo">resume<b>engine</b></div>
+        <div class="nav-links"><span class="on">Upload</span><span>Leaderboard</span><span>Inspector</span><span>Reports</span>
+            <a class="nav-pill" href="https://github.com/Sinchanak-212/resume-shortlisting-engine" target="_blank">GitHub</a></div>
+    </div>
     <div class="hero-container">
-        <div class="hero-title">AI Resume Shortlisting Engine</div>
-        <div class="hero-subtitle">
-            Multi-agent pipeline that parses, normalizes, semantically matches,
-            and explainably ranks candidates against your job description — all powered by AI.
-        </div>
+        <div class="planet l"></div><div class="planet-label l">PARSE</div>
+        <div class="planet r"></div><div class="planet-label r">RANK</div>
+        <div class="hero-eyebrow">AI Resume Shortlisting</div>
+        <div class="hero-title">SHORTLIST</div>
+        <div class="hero-line"></div>
+        <div class="hero-subtitle">Parse, match and explainably rank candidates against your job description. Handles scanned PDFs, multi-column layouts and batch uploads in minutes.</div>
+        <div class="hero-cta">GET STARTED</div>
+        <div class="hero-hint">Upload resumes in the sidebar to begin</div>
+        <div class="horizon"></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -709,7 +737,7 @@ else:
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="text-align:center; color:#475569; font-size:0.88rem; padding-bottom:40px;">
+    <div style="text-align:center; color:#94a3b8; font-size:0.88rem; padding-bottom:40px;">
         👈 Use the sidebar to upload resumes, select a role, and click <b>Process & Rank</b> to begin.
     </div>
     """, unsafe_allow_html=True)

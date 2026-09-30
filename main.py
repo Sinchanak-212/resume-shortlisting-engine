@@ -1,6 +1,9 @@
 import os
 import argparse
 import sys
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -86,7 +89,7 @@ def build_pipeline_agents() -> dict:
     }
 
 
-def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agents: dict = None) -> tuple:
+def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agents: dict = None, progress_cb=None, max_workers: int = None) -> tuple:
     """Orchestrates the multi-agent pipeline to parse, score, and analyze resumes.
 
     Args:
@@ -132,13 +135,19 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
         pdf_files = pdf_files[:limit]
         logger.info(f"Limiting execution to first {limit} files.")
 
-    for pdf_file in pdf_files:
+    parse_lock = threading.Lock()  # OCR/torch models are not thread-safe; LLM + matching still run in parallel
+
+    def _process_one(pdf_file):
+        results = []
+        t0 = time.perf_counter()
         logger.info(f"\nProcessing file: {pdf_file.name}")
         candidate_name = pdf_file.stem
         
         try:
             # Step 1: Parse PDF / OCR Fallback
-            raw_text, parse_status, parse_reason = parser_agent.parse_pdf(str(pdf_file))
+            with parse_lock:
+                raw_text, parse_status, parse_reason = parser_agent.parse_pdf(str(pdf_file))
+            t_parse = time.perf_counter() - t0
             
             if parse_status == "Failed" or not raw_text.strip():
                 # Parser and OCR failed completely
@@ -155,7 +164,7 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
                     is_shortlisted=False,
                     is_reserve=False
                 ))
-                continue
+                return results[-1]
 
             # Step 2: Information Extraction
             parsed_resume = extractor_agent.extract_resume_info(raw_text)
@@ -184,7 +193,7 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
                     is_shortlisted=False,
                     is_reserve=False
                 ))
-                continue
+                return results[-1]
 
             # Step 5: Skill Extraction & Synonym Mapping
             enriched_skills = skill_extractor.extract_and_enrich_skills(
@@ -235,6 +244,18 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
                 is_shortlisted=False,
                 is_reserve=False
             ))
+        logger.info(f"Finished {pdf_file.name} in {time.perf_counter() - t0:.1f}s")
+        return results[-1]
+
+    workers = max_workers or int(os.getenv("MAX_WORKERS", "3"))
+    total = len(pdf_files)
+    results = []
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = {pool.submit(_process_one, f): f for f in pdf_files}
+        for done, fut in enumerate(as_completed(futures), start=1):
+            results.append(fut.result())
+            if progress_cb:
+                progress_cb(done, total, futures[fut].name)  # called from the calling thread only
 
     # Step 9: Ranking & Slot Allocation
     ranked_candidates = ranker_agent.rank_and_allocate_slots(results, parsed_jd)

@@ -88,6 +88,27 @@ def test_process_resumes_raises_on_missing_dir():
     raise AssertionError("expected FileNotFoundError")
 
 
+def test_parallel_pipeline_reports_progress():
+    try:
+        import main, tempfile
+    except ImportError:
+        print("  SKIP (ML dependencies not installed)"); return
+    class Stub:
+        def __getattr__(self, n): raise RuntimeError("stub")
+        def parse_pdf(self, p): return "", "Failed", "stub"   # -> every file becomes a Failed result
+    class Ranker:
+        def rank_and_allocate_slots(self, r, jd): return r
+        def export_reports(self, r, jd): return {}
+    agents = {k: Stub() for k in ("llm_client","parser_agent","extractor_agent","normalizer_agent","skill_extractor",
+              "matcher","scoring_agent","confidence_agent","explanation_agent")}
+    agents["ranker_agent"] = Ranker()
+    with tempfile.TemporaryDirectory() as d:
+        for n in range(5): (Path(d) / f"r{n}.pdf").write_bytes(b"x")
+        calls = []
+        res, _ = main.process_resumes(d, JD, agents=agents, progress_cb=lambda a, b, c: calls.append((a, b)))
+    assert len(res) == 5 and [c[0] for c in calls] == [1, 2, 3, 4, 5] and calls[-1][1] == 5
+
+
 if __name__ == "__main__":
     tests = [(n, f) for n, f in sorted(globals().items()) if n.startswith("test_") and callable(f)]
     failed = 0
