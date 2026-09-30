@@ -81,5 +81,9 @@ class GradeNormalizerAgent:
             return min(round(normalized, 2), 10.0), f"Inferred GPA {val}/4 from text patterns (multiplied by 2.5)"
 
         # Default fallback: return a passing grade but flag as low confidence
-        logger.warning("No academic grades found. Using default fallback of 6.5.")
-        return 6.5, "No grade info found; using fallback of 6.5 CGPA with low confidence"
+        # An unknown grade must NOT look like a passing one (the old 6.5 default equalled
+        # the JD minimum, so candidates with no grade cleared the CGPA bar). 0.0 means
+        # "unknown": it earns no CGPA points and keeps the candidate off the shortlist
+        # until a human checks the resume.
+        logger.warning("No academic grades found. Returning 0.0 (unknown).")
+        return 0.0, "No grade info found; CGPA treated as unknown (0.0) - manual review recommended"

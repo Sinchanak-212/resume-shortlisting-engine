@@ -1,7 +1,21 @@
+import re
 import logging
 from typing import List, Dict, Any, Tuple
 from models.schemas import ParsedResume, ParsedJD, SkillMatchDetail
-from config import logger, SCORE_WEIGHTS
+from config import logger, SCORE_WEIGHTS, ENABLE_COLLEGE_BONUS
+
+# Word-boundary patterns. Plain substring checks (e.g. "it" in "architecture",
+# "cs" in "physics", "nit" in "institute") produced false CS / tier-1 matches.
+_CS_PATTERNS = [
+    r"\bcomputer", r"\bcs\b", r"\bcse\b", r"\bit\b", r"information technology",
+    r"\bsoftware", r"data science", r"\bai\b", r"artificial intelligence",
+]
+_TIER1_PATTERNS = [r"\biit\b", r"\bnit\b", r"\bbits\b", r"\biiit\b", r"\brvce\b", r"\bbms\b", r"\bpes\b"]
+
+
+def _matches_any(text: str, patterns) -> bool:
+    return any(re.search(p, text) for p in patterns)
+
 
 class ScoringAgent:
     def __init__(self):
@@ -93,11 +107,8 @@ class ScoringAgent:
         degree = (parsed_resume.degree or "").lower()
         college = (parsed_resume.college or "").lower()
         
-        cs_keywords = ["computer", "cs", "it", "information technology", "software", "data science", "ai", "artificial intelligence"]
-        tier1_keywords = ["iit", "nit", "bits", "iiit", "rvce", "bms", "pes"] # Indian premium colleges keywords
-
-        is_cs = any(k in branch or k in degree for k in cs_keywords)
-        is_tier1 = any(k in college for k in tier1_keywords)
+        is_cs = _matches_any(branch, _CS_PATTERNS) or _matches_any(degree, _CS_PATTERNS)
+        is_tier1 = ENABLE_COLLEGE_BONUS and _matches_any(college, _TIER1_PATTERNS)
 
         if is_cs or is_tier1:
             edu_score = 5.0

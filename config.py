@@ -37,14 +37,19 @@ SKILL_SYNONYMS = {
     "mongodb": ["mongo", "mongodb"],
     "postgresql": ["postgres", "postgresql", "psql"],
     "mysql": ["mysql", "my sql"],
-    "github": ["git", "github", "gitlab"],
+    "git": ["git", "github", "gitlab"],
     "redux": ["redux", "redux-toolkit", "redux toolkit"],
     "docker": ["docker", "dockerfile", "containerization"],
-    "aws": ["aws", "amazon web services", "s3", "ec2"],
+    "aws": ["aws", "amazon web services"],
     "gcp": ["gcp", "google cloud platform", "google cloud"],
     "kubernetes": ["k8s", "kubernetes"],
-    "html": ["html", "html5", "css", "css3"],
+    "html": ["html", "html5"],
+    "css": ["css", "css3"],
 }
+
+# Set False to remove the college-name bonus from the Education score
+# (recommended if you want scoring to depend only on skills and evidence).
+ENABLE_COLLEGE_BONUS = True
 
 # Score Weights
 SCORE_WEIGHTS = {

@@ -86,7 +86,7 @@ def build_pipeline_agents() -> dict:
     }
 
 
-def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agents: dict = None) -> list:
+def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agents: dict = None) -> tuple:
     """Orchestrates the multi-agent pipeline to parse, score, and analyze resumes.
 
     Args:
@@ -120,13 +120,11 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
     
     resumes_path = Path(resumes_dir)
     if not resumes_path.exists():
-        logger.error(f"Resumes directory not found: {resumes_dir}")
-        return []
+        raise FileNotFoundError(f"Resumes directory not found: {resumes_dir}")
 
     pdf_files = list(resumes_path.glob("*.pdf"))
     if not pdf_files:
-        logger.error(f"No PDF files found in directory: {resumes_dir}")
-        return []
+        raise ValueError(f"No PDF files found in directory: {resumes_dir}")
 
     logger.info(f"Found {len(pdf_files)} PDF resumes to process.")
     
@@ -285,7 +283,11 @@ def main():
     logger.info(f"Job Description: Role={parsed_jd.role_name}, Slots={parsed_jd.slots}, Min CGPA={parsed_jd.min_cgpa}")
 
     # 2. Run Pipeline
-    ranked_candidates, report_paths = process_resumes(args.resumes_dir, parsed_jd, args.limit)
+    try:
+        ranked_candidates, report_paths = process_resumes(args.resumes_dir, parsed_jd, args.limit)
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     # 3. Print Leadboard Summary
     print("\n" + "="*80)

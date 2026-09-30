@@ -42,567 +42,88 @@ def get_cached_agents():
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-    /* ── Global Reset & Theme ──────────────────────────────────────────── */
-    .stApp {
-        background: linear-gradient(135deg, #0a0e1a 0%, #0f1629 40%, #111827 100%);
-        color: #e2e8f0;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-    
-    /* Hide default Streamlit branding */
-    #MainMenu, footer, header {visibility: hidden;}
+    :root { --bg:#f6f8fb; --surface:#fff; --line:#e2e8f0; --ink:#0f172a; --muted:#475569; --accent:#1d4ed8; --accent-soft:#eff4ff; --ok:#047857; --warn:#b45309; --bad:#b91c1c; }
+    .stApp { background: var(--bg); color: var(--ink); font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; }
+    #MainMenu, footer, header { visibility: hidden; }
+    .block-container { max-width: 1180px; padding-top: 2rem; }
+    h1, h2, h3, h4, h5, h6 { color: var(--ink); font-family: 'Inter', sans-serif; letter-spacing: -0.01em; }
+    p, span, div, label { font-family: 'Inter', sans-serif; }
+    section[data-testid="stSidebar"] { background: var(--surface); border-right: 1px solid var(--line); }
+    section[data-testid="stSidebar"] .stMarkdown h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    .custom-divider { height: 1px; background: var(--line); margin: 20px 0; }
 
-    /* ── Sidebar ───────────────────────────────────────────────────────── */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0d1117 0%, #111827 100%);
-        border-right: 1px solid rgba(99, 102, 241, 0.15);
-    }
-    section[data-testid="stSidebar"] .stMarkdown h1,
-    section[data-testid="stSidebar"] .stMarkdown h2,
-    section[data-testid="stSidebar"] .stMarkdown h3 {
-        font-family: 'Inter', sans-serif;
-        color: #f1f5f9;
-    }
+    /* Hero */
+    .hero-container { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 40px 44px; margin-bottom: 24px; }
+    .hero-title { font-size: 2.1rem; font-weight: 700; color: var(--ink); line-height: 1.2; margin: 0 0 10px; }
+    .hero-subtitle { font-size: 1.05rem; color: var(--muted); max-width: 680px; line-height: 1.6; margin: 0; }
 
-    /* ── Typography ────────────────────────────────────────────────────── */
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Inter', sans-serif !important;
-        color: #f8fafc !important;
-        font-weight: 700 !important;
-        letter-spacing: -0.02em;
-    }
-    p, span, div, label {
-        font-family: 'Inter', sans-serif;
-    }
+    /* Cards */
+    .features-grid, .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .feature-card, .kpi-card, .inspector-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .feature-card:hover, .kpi-card:hover { border-color: #c7d2fe; box-shadow: 0 4px 12px rgba(15,23,42,.06); }
+    .feature-icon, .kpi-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); border-radius: 8px; font-size: 1.1rem; margin-bottom: 12px; }
+    .feature-title { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+    .feature-desc, .kpi-label { font-size: .86rem; color: var(--muted); line-height: 1.5; }
+    .kpi-value { font-size: 1.9rem; font-weight: 700; color: var(--ink); }
+    .kpi-accent-blue { border-top: 3px solid var(--accent); } .kpi-accent-green { border-top: 3px solid var(--ok); }
+    .kpi-accent-amber { border-top: 3px solid var(--warn); } .kpi-accent-red { border-top: 3px solid var(--bad); }
 
-    /* ── Animations ────────────────────────────────────────────────────── */
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(24px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes shimmer {
-        0%   { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-    }
-    @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.15); }
-        50%      { box-shadow: 0 0 30px rgba(99, 102, 241, 0.3); }
-    }
-    @keyframes gradientFlow {
-        0%   { background-position: 0% 50%; }
-        50%  { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
+    /* Workflow */
+    .workflow-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; }
+    .wf-step { display: flex; align-items: center; gap: 8px; font-size: .86rem; font-weight: 500; color: var(--ink); }
+    .wf-step-num, .sidebar-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .72rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+    .wf-arrow { color: #475569; }
+    .sidebar-step { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+    .sidebar-step-text { font-size: .85rem; color: var(--muted); }
 
-    /* ── Hero Section ──────────────────────────────────────────────────── */
-    .hero-container {
-        text-align: center;
-        padding: 60px 20px 40px;
-        animation: fadeInUp 0.8s ease-out;
-    }
-    .hero-title {
-        font-size: 3.2rem;
-        font-weight: 900;
-        letter-spacing: -0.03em;
-        background: linear-gradient(135deg, #818cf8, #6366f1, #a78bfa, #818cf8);
-        background-size: 300% 300%;
-        animation: gradientFlow 6s ease infinite;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 12px;
-        line-height: 1.15;
-    }
-    .hero-subtitle {
-        font-size: 1.15rem;
-        color: #94a3b8;
-        font-weight: 400;
-        max-width: 700px;
-        margin: 0 auto 48px;
-        line-height: 1.65;
-    }
+    /* Section header */
+    .section-header { display: flex; align-items: center; gap: 10px; margin: 28px 0 14px; }
+    .section-header-icon { font-size: 1rem; }
+    .section-header-text { font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+    .section-header-line { flex: 1; height: 1px; background: var(--line); }
 
-    /* ── Feature Cards Grid ────────────────────────────────────────────── */
-    .features-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-        max-width: 960px;
-        margin: 0 auto 40px;
-    }
-    .feature-card {
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(99, 102, 241, 0.12);
-        border-radius: 16px;
-        padding: 32px 24px;
-        text-align: center;
-        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: fadeInUp 0.8s ease-out backwards;
-    }
-    .feature-card:nth-child(2) { animation-delay: 0.1s; }
-    .feature-card:nth-child(3) { animation-delay: 0.2s; }
-    .feature-card:hover {
-        transform: translateY(-6px);
-        border-color: rgba(99, 102, 241, 0.35);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(99, 102, 241, 0.1);
-    }
-    .feature-icon {
-        font-size: 2.5rem;
-        margin-bottom: 16px;
-        display: block;
-    }
-    .feature-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #e2e8f0;
-        margin-bottom: 8px;
-    }
-    .feature-desc {
-        font-size: 0.88rem;
-        color: #64748b;
-        line-height: 1.55;
-    }
-
-    /* ── Workflow Steps ─────────────────────────────────────────────────── */
-    .workflow-bar {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin: 10px auto 40px;
-        max-width: 700px;
-        animation: fadeInUp 0.8s ease-out 0.3s backwards;
-    }
-    .wf-step {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(30, 41, 59, 0.7);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        border-radius: 999px;
-        padding: 8px 18px;
-        font-size: 0.82rem;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    .wf-step-num {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: white;
-        width: 22px; height: 22px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.72rem;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
-    .wf-arrow {
-        color: #334155;
-        font-size: 1.1rem;
-    }
-
-    /* ── Glassmorphism KPI Metric Cards ────────────────────────────────── */
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-bottom: 36px;
-    }
-    .kpi-card {
-        background: rgba(15, 23, 42, 0.5);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 16px;
-        padding: 24px;
-        text-align: center;
-        transition: all 0.3s ease;
-        animation: fadeInUp 0.6s ease-out backwards;
-    }
-    .kpi-card:nth-child(2) { animation-delay: 0.08s; }
-    .kpi-card:nth-child(3) { animation-delay: 0.16s; }
-    .kpi-card:nth-child(4) { animation-delay: 0.24s; }
-    .kpi-card:hover {
-        transform: translateY(-3px);
-        border-color: rgba(99, 102, 241, 0.25);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-    }
-    .kpi-icon { font-size: 1.6rem; margin-bottom: 8px; }
-    .kpi-value {
-        font-size: 2.4rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-        margin-bottom: 6px;
-    }
-    .kpi-label {
-        font-size: 0.82rem;
-        color: #64748b;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .kpi-accent-blue   { color: #818cf8; }
-    .kpi-accent-green  { color: #34d399; }
-    .kpi-accent-amber  { color: #fbbf24; }
-    .kpi-accent-red    { color: #f87171; }
-
-    /* ── Section Headers ───────────────────────────────────────────────── */
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 32px 0 20px;
-        animation: fadeInUp 0.5s ease-out;
-    }
-    .section-header-icon {
-        font-size: 1.5rem;
-    }
-    .section-header-text {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #f1f5f9;
-        letter-spacing: -0.02em;
-    }
-    .section-header-line {
-        flex: 1;
-        height: 1px;
-        background: linear-gradient(90deg, rgba(99, 102, 241, 0.3), transparent);
-    }
-
-    /* ── Candidate Inspector Card ──────────────────────────────────────── */
-    .inspector-card {
-        background: rgba(15, 23, 42, 0.5);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 16px;
-        padding: 28px;
-        margin-bottom: 16px;
-        animation: fadeInUp 0.5s ease-out;
-    }
-    .inspector-card:hover {
-        border-color: rgba(99, 102, 241, 0.2);
-    }
-
-    /* ── Profile Header ────────────────────────────────────────────────── */
-    .profile-header {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 24px;
-    }
-    .profile-avatar {
-        width: 56px; height: 56px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: white;
-        flex-shrink: 0;
-    }
-    .profile-name {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #f1f5f9;
-        margin-bottom: 4px;
-    }
-    .profile-file {
-        font-size: 0.82rem;
-        color: #64748b;
-        font-family: 'SF Mono', 'Fira Code', monospace;
-    }
-
-    /* ── Status & Confidence Badges ────────────────────────────────────── */
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 14px;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-    }
-    .badge-shortlisted {
-        background: rgba(52, 211, 153, 0.12);
-        color: #34d399;
-        border: 1px solid rgba(52, 211, 153, 0.25);
-    }
-    .badge-reserve {
-        background: rgba(251, 191, 36, 0.12);
-        color: #fbbf24;
-        border: 1px solid rgba(251, 191, 36, 0.25);
-    }
-    .badge-failed {
-        background: rgba(248, 113, 113, 0.12);
-        color: #f87171;
-        border: 1px solid rgba(248, 113, 113, 0.25);
-    }
-    .badge-conf-high {
-        background: rgba(52, 211, 153, 0.1);
-        color: #34d399;
-        border: 1px solid rgba(52, 211, 153, 0.2);
-    }
-    .badge-conf-medium {
-        background: rgba(96, 165, 250, 0.1);
-        color: #60a5fa;
-        border: 1px solid rgba(96, 165, 250, 0.2);
-    }
-    .badge-conf-low {
-        background: rgba(167, 139, 250, 0.1);
-        color: #a78bfa;
-        border: 1px solid rgba(167, 139, 250, 0.2);
-    }
-
-    /* ── Score Ring ─────────────────────────────────────────────────────── */
-    .score-ring-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    .score-ring {
-        position: relative;
-        width: 110px; height: 110px;
-    }
-    .score-ring svg {
-        transform: rotate(-90deg);
-    }
-    .score-ring-bg {
-        fill: none;
-        stroke: rgba(255, 255, 255, 0.06);
-        stroke-width: 8;
-    }
-    .score-ring-fill {
-        fill: none;
-        stroke-width: 8;
-        stroke-linecap: round;
-        transition: stroke-dashoffset 1s ease-out;
-    }
-    .score-ring-text {
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #f1f5f9;
-    }
-    .score-ring-label {
-        font-size: 0.78rem;
-        color: #64748b;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }
-
-    /* ── Stat Row ──────────────────────────────────────────────────────── */
-    .stat-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    }
+    /* Candidate profile */
+    .profile-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .profile-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 600; display: flex; align-items: center; justify-content: center; }
+    .profile-name { font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+    .profile-file { font-size: .8rem; color: var(--muted); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; border: 1px solid transparent; margin-right: 6px; }
+    .badge-shortlisted, .badge-conf-high { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .badge-reserve, .badge-conf-medium { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .badge-failed, .badge-conf-low { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .score-ring-container { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .score-ring { position: relative; width: 110px; height: 110px; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring-bg { fill: none; stroke: var(--line); stroke-width: 8; }
+    .score-ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; }
+    .score-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 1.5rem; font-weight: 700; color: var(--ink); }
+    .score-ring-label { font-size: .75rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+    .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
     .stat-row:last-child { border-bottom: none; }
-    .stat-label {
-        font-size: 0.88rem;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    .stat-value {
-        font-size: 0.92rem;
-        color: #e2e8f0;
-        font-weight: 600;
-    }
+    .stat-label { color: var(--muted); font-size: .86rem; } .stat-value { color: var(--ink); font-weight: 500; font-size: .9rem; }
 
-    /* ── Skill Chips ───────────────────────────────────────────────────── */
-    .skill-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        margin: 4px;
-        transition: all 0.2s ease;
-    }
-    .skill-chip:hover {
-        transform: translateY(-1px);
-    }
-    .chip-exact {
-        background: rgba(52, 211, 153, 0.1);
-        color: #34d399;
-        border: 1px solid rgba(52, 211, 153, 0.25);
-    }
-    .chip-synonym {
-        background: rgba(96, 165, 250, 0.1);
-        color: #60a5fa;
-        border: 1px solid rgba(96, 165, 250, 0.25);
-    }
-    .chip-partial, .chip-implicit {
-        background: rgba(251, 191, 36, 0.1);
-        color: #fbbf24;
-        border: 1px solid rgba(251, 191, 36, 0.25);
-    }
-    .chip-none {
-        background: rgba(248, 113, 113, 0.08);
-        color: #f87171;
-        border: 1px solid rgba(248, 113, 113, 0.2);
-    }
-    .chip-extracted {
-        background: rgba(99, 102, 241, 0.08);
-        color: #a5b4fc;
-        border: 1px solid rgba(99, 102, 241, 0.18);
-    }
+    /* Skill chips and explanation */
+    .skill-chip { display: inline-block; padding: 4px 11px; margin: 0 6px 6px 0; border-radius: 6px; font-size: .8rem; font-weight: 500; border: 1px solid var(--line); background: #0f172a; color: var(--ink); }
+    .chip-exact { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .chip-synonym { background: var(--accent-soft); color: var(--accent); border-color: #c7d2fe; }
+    .chip-partial, .chip-implicit { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .chip-none { background: #fef2f2; color: var(--bad); border-color: #fecaca; }
+    .chip-extracted { background: #0f172a; color: var(--muted); }
+    .explanation-list { display: flex; flex-direction: column; gap: 10px; }
+    .explanation-item { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 14px 16px; color: var(--ink); line-height: 1.55; }
+    .explanation-bullet { color: var(--accent); font-weight: 600; }
 
-    /* ── Explanation Bullets ────────────────────────────────────────────── */
-    .explanation-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    .explanation-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 14px 16px;
-        background: rgba(15, 23, 42, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        border-radius: 12px;
-        margin-bottom: 10px;
-        font-size: 0.9rem;
-        color: #cbd5e1;
-        line-height: 1.55;
-        transition: all 0.2s ease;
-    }
-    .explanation-item:hover {
-        border-color: rgba(99, 102, 241, 0.15);
-        background: rgba(15, 23, 42, 0.6);
-    }
-    .explanation-bullet {
-        color: #818cf8;
-        font-size: 1.1rem;
-        flex-shrink: 0;
-        margin-top: 1px;
-    }
-
-    /* ── Download Buttons ──────────────────────────────────────────────── */
-    .stDownloadButton > button {
-        background: rgba(99, 102, 241, 0.1) !important;
-        border: 1px solid rgba(99, 102, 241, 0.25) !important;
-        color: #a5b4fc !important;
-        border-radius: 12px !important;
-        font-weight: 600 !important;
-        font-family: 'Inter', sans-serif !important;
-        transition: all 0.3s ease !important;
-    }
-    .stDownloadButton > button:hover {
-        background: rgba(99, 102, 241, 0.2) !important;
-        border-color: rgba(99, 102, 241, 0.5) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 16px rgba(99, 102, 241, 0.15) !important;
-    }
-
-    /* ── Primary Button ────────────────────────────────────────────────── */
-    .stButton > button[kind="primary"],
-    button[data-testid="stBaseButton-primary"] {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
-        border: none !important;
-        color: white !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: 0.95rem !important;
-        padding: 12px 24px !important;
-        transition: all 0.3s ease !important;
-        letter-spacing: 0.01em !important;
-    }
-    button[data-testid="stBaseButton-primary"]:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 12px 24px rgba(99, 102, 241, 0.35) !important;
-    }
-
-    /* ── Tabs ──────────────────────────────────────────────────────────── */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background: rgba(15, 23, 42, 0.4);
-        border-radius: 12px;
-        padding: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.04);
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        color: #64748b;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        padding: 10px 20px;
-    }
-    .stTabs [aria-selected="true"] {
-        background: rgba(99, 102, 241, 0.15) !important;
-        color: #a5b4fc !important;
-    }
-    .stTabs [data-baseweb="tab-highlight"] {
-        background-color: transparent !important;
-    }
-    .stTabs [data-baseweb="tab-border"] {
-        display: none;
-    }
-
-    /* ── Dataframe ─────────────────────────────────────────────────────── */
-    .stDataFrame {
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    /* ── Divider ───────────────────────────────────────────────────────── */
-    .custom-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
-        margin: 36px 0;
-        border: none;
-    }
-
-    /* ── Sidebar Step Indicators ────────────────────────────────────────── */
-    .sidebar-step {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-    }
-    .sidebar-step-num {
-        width: 28px; height: 28px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.78rem;
-        font-weight: 700;
-        flex-shrink: 0;
-    }
-    .sidebar-step-text {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #e2e8f0;
-    }
-
-    /* ── Responsive ────────────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-        .features-grid { grid-template-columns: 1fr; }
-        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-        .hero-title { font-size: 2rem; }
-        .workflow-bar { flex-wrap: wrap; }
-    }
+    /* Streamlit widgets */
+    button[data-testid="stBaseButton-primary"] { background: var(--accent) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; }
+    button[data-testid="stBaseButton-primary"]:hover { background: #1e40af !important; }
+    .stDownloadButton > button { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font-weight: 500; }
+    .stDownloadButton > button:hover { border-color: var(--accent); color: var(--accent); }
+    .stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom: 1px solid var(--line); }
+    .stTabs [data-baseweb="tab"] { color: var(--muted); font-weight: 500; }
+    .stTabs [aria-selected="true"] { color: var(--accent); }
+    .stTabs [data-baseweb="tab-highlight"] { background: var(--accent); }
+    .stDataFrame { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    @media (max-width: 768px) { .hero-container { padding: 24px; } .hero-title { font-size: 1.6rem; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -625,7 +146,7 @@ with st.sidebar:
     st.markdown("""
     <div style="text-align:center; padding: 16px 0 8px;">
         <span style="font-size: 2rem;">💼</span>
-        <div style="font-size: 1.1rem; font-weight: 800; color: #f1f5f9; margin-top: 4px; letter-spacing: -0.02em;">
+        <div style="font-size: 1.1rem; font-weight: 800; color: #0f172a; margin-top: 4px; letter-spacing: -0.02em;">
             Resume Engine
         </div>
         <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">AI-Powered Shortlisting</div>
@@ -682,8 +203,8 @@ with st.sidebar:
         st.markdown(f"""
         <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.15);
                     border-radius: 12px; padding: 14px; margin-top: 8px; font-size: 0.82rem;">
-            <div style="color: #a5b4fc; font-weight: 600; margin-bottom: 6px;">📋 {parsed_jd.role_name}</div>
-            <div style="color: #94a3b8;">
+            <div style="color: #1d4ed8; font-weight: 600; margin-bottom: 6px;">📋 {parsed_jd.role_name}</div>
+            <div style="color: #475569;">
                 <b>Required:</b> {', '.join(parsed_jd.required_skills[:4])}{'...' if len(parsed_jd.required_skills) > 4 else ''}<br/>
                 <b>CGPA ≥</b> {parsed_jd.min_cgpa:.1f} &nbsp;|&nbsp; <b>Slots:</b> {parsed_jd.slots}
             </div>
@@ -778,14 +299,15 @@ if process_btn:
         progress_bar.progress((i + 1) / len(pipeline_stages))
         status_container.markdown(f"""
         <div style="display:flex; align-items:center; gap:12px; padding:12px 16px;
-                    background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.15);
+                    background:#eff4ff; border:1px solid #c7d2fe;
                     border-radius:12px; margin:8px 0;">
             <div style="font-size:1.2rem;">{stage.split(' ')[0]}</div>
-            <div style="color:#a5b4fc; font-weight:600; font-size:0.9rem;">{' '.join(stage.split(' ')[1:])}</div>
+            <div style="color:#1d4ed8; font-weight:600; font-size:0.9rem;">{' '.join(stage.split(' ')[1:])}</div>
         </div>
         """, unsafe_allow_html=True)
         time.sleep(0.3)
 
+    pipeline_ok = False
     with st.spinner("Running multi-agent pipeline..."):
         try:
             candidates, report_paths = process_resumes(
@@ -796,6 +318,7 @@ if process_btn:
             )
             st.session_state.ranked_candidates = candidates
             st.session_state.report_paths = report_paths
+            pipeline_ok = True
         except Exception as e:
             st.error(f"Pipeline crashed: {e}")
             st.exception(e)
@@ -804,8 +327,8 @@ if process_btn:
     time.sleep(0.3)
     progress_bar.empty()
     status_container.empty()
-    st.success("✅ Evaluation pipeline complete!")
-    st.balloons()
+    if pipeline_ok:
+        st.success("Evaluation pipeline complete.")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -827,11 +350,11 @@ def get_confidence_badge(confidence):
 def get_score_color(score):
     """Returns hex color based on score value."""
     if score >= 70:
-        return "#34d399"
+        return "#047857"
     elif score >= 45:
-        return "#fbbf24"
+        return "#b45309"
     else:
-        return "#f87171"
+        return "#b91c1c"
 
 def render_score_ring(score):
     """Returns HTML for a circular score indicator."""
@@ -1071,10 +594,10 @@ if st.session_state.ranked_candidates:
             # Legend
             st.markdown("""
             <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:0.78rem; color:#64748b;">
-                <span><span style="color:#34d399">✓</span> Exact</span>
-                <span><span style="color:#60a5fa">≈</span> Synonym</span>
-                <span><span style="color:#fbbf24">◐</span> Partial/Implicit</span>
-                <span><span style="color:#f87171">✗</span> Not Found</span>
+                <span><span style="color:#047857">✓</span> Exact</span>
+                <span><span style="color:#1d4ed8">≈</span> Synonym</span>
+                <span><span style="color:#b45309">◐</span> Partial/Implicit</span>
+                <span><span style="color:#b91c1c">✗</span> Not Found</span>
             </div>
             """, unsafe_allow_html=True)
 

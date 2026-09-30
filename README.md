@@ -1,74 +1,84 @@
-# AI Resume Shortlisting Engine - Hackathon Winner
+# AI Resume Shortlisting Engine
 
-An industry-standard multi-agent AI resume shortlisting engine designed to parse, analyze, normalize, and rank candidates against job descriptions. It solves real-world layout challenges, manages scanned files via OCR, aligns grades to a 10-point scale, and performs semantic matching.
+A multi-agent pipeline that parses resumes (including scanned PDFs), extracts structured data, matches skills against a job description, and produces an explainable, deterministic ranking. It ships with a CLI and a Streamlit dashboard.
 
----
+> **Decision support, not decision making.** Scores are meant to help a human reviewer prioritise resumes. Always review shortlisted *and* rejected candidates manually.
 
 ## Features
-- **Layout-Aware PDF Parser**: Extracts multi-column templates by coordinate segmentation using PyMuPDF.
-- **Automatic OCR Fallback**: Renders PDF pages to images and runs EasyOCR / Pytesseract when standard text yield is low (<50 words).
-- **Hybrid Matching**: Computes Exact, Synonym, Partial, and Implicit (Semantic) similarities using local embeddings (`all-MiniLM-L6-v2`) and RapidFuzz.
-- **10-Point Grade Normalizer**: Converts GPA, CGPA, and Percentages to a standardized 10-point Indian CGPA scale.
-- **Deterministic Weighted Scoring**: Calculates stable candidate scores based on custom JD weights.
-- **Explainable AI (XAI)**: Generates 3 clear bullet points explaining match results per candidate.
-- **Streamlit Dashboard**: A high-fidelity UI to upload resumes, view Leaderboards, download reports, and inspect candidate drill-downs.
 
----
+- **Layout-aware PDF parsing**: splits multi-column templates by geometry (PyMuPDF) so sections don't interleave.
+- **OCR fallback**: scanned resumes (under 50 extracted words) are rendered to images and read with EasyOCR, then Pytesseract.
+- **Hybrid skill matching**: exact, synonym, fuzzy (RapidFuzz) and semantic (`all-MiniLM-L6-v2`) matching.
+- **Grade normalisation**: CGPA, percentage and 4/5-point GPA converted to a 10-point scale. A missing grade is treated as *unknown* (0.0), never as a pass.
+- **Deterministic scoring**: the same inputs always give the same score; the LLM is used only for extraction and explanations.
+- **Explainable output**: three plain-language bullets per candidate, plus a per-component score breakdown.
+- **Quality gate**: poor parses are flagged, capped at lower confidence, and never auto-shortlisted.
 
-## 🛠️ Installation & Setup (Under 5 Minutes)
+## Quick start
 
-### 1. Clone & Set Active Workspace
-Ensure your files are placed in:
-`C:\Users\User\.gemini\antigravity\scratch\resume_shortlisting_engine`
-
-### 2. Install Dependencies
 ```bash
+git clone https://github.com/Sinchanak-212/resume-shortlisting-engine.git
+cd resume-shortlisting-engine
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
+cp .env.example .env                                    # then add at least one API key
 ```
 
-### 3. Setup Environment Variables
-Create a `.env` file in the root directory:
-```env
-# Provide at least one API Key:
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
+Supported providers: Gemini, OpenAI, Anthropic (see `.env.example` for optional model overrides). Check each provider's current model list before overriding defaults.
 
-# Optional Custom Pytesseract Location
-# TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
-```
+### Dashboard
 
----
-
-## 🚀 Running the Engine
-
-### CLI Pipeline Run
-To run the evaluation pipeline from the console:
-```bash
-# Run with one of the 5 predefined roles (frontend, backend, fullstack, database, api_integration)
-python main.py --resumes_dir ./scratch/resumes --role_type backend
-
-# Or run with a custom JD file
-python main.py --resumes_dir ./scratch/resumes --jd_text_file ./scratch/jd.txt
-```
-
-### Running the Web Dashboard
 ```bash
 streamlit run app.py
 ```
 
-### Running Stability & Unit Tests
-To run the score stability and grade normalizer tests:
+### Command line
+
 ```bash
-python tests/test_runner.py
+# One of the built-in roles: frontend, backend, fullstack, database, api_integration
+python main.py --resumes_dir ./resumes --role_type backend
+
+# Or your own job description
+python main.py --resumes_dir ./resumes --jd_text_file ./jd.txt
 ```
 
----
+Reports are written to `./reports/`: `[role]_report.csv`, `.json`, `.md`, and `[role]_parse_quality_report.csv`.
 
-## 📋 Evaluation Reports Output
-All evaluation outputs are saved in the `./reports/` directory:
-1. `[role]_report.csv`: Table containing leaderboard scores and standings.
-2. `[role]_report.json`: Detailed JSON representation of parsed resumes and score evaluations.
-3. `[role]_report.md`: Markdown summary report with shortlisted/reserve statuses and analysis.
-4. `[role]_parse_quality_report.csv`: Standalone parser quality audit log.
+## How scoring works
+
+| Component | Max points |
+| --- | --- |
+| Required skills | 45 (60 if the JD lists no preferred skills) |
+| Preferred skills | 15 |
+| Experience / internships | 10 |
+| Projects | 10 |
+| CGPA vs. JD minimum | 10 |
+| Certifications | 5 |
+| Education context | 5 |
+
+Weights live in `config.py`. To score without any college-name bonus, set `ENABLE_COLLEGE_BONUS = False` there. A candidate is shortlisted only if they have a non-zero score **and** meet the JD's minimum CGPA; otherwise they go to the reserve list. See [`design_decisions.md`](design_decisions.md) for the parsing, OCR and confidence design.
+
+## Tests
+
+```bash
+python tests/test_runner.py        # or: pytest tests/
+```
+
+The tests need only `pydantic`, `python-dotenv`, `rapidfuzz` and `pandas` (no models or API keys) and run in CI on every push.
+
+## Privacy and responsible use
+
+- Resume text is sent to the LLM provider you configure. Get candidate consent and follow your local data-protection rules before processing real resumes.
+- Keyword and embedding matching can under-rate unconventional backgrounds. Treat scores as a starting point for review.
+
+## Project layout
+
+```
+agents/   parser, OCR, extractor, skill extraction, matcher, scoring, confidence, ranker, explanation
+models/   Pydantic schemas
+utils/    LLM client, text helpers
+app.py    Streamlit dashboard        main.py   CLI + pipeline orchestration
+```
+
+See [`ai_usage.md`](ai_usage.md) for how AI was used in building this project.

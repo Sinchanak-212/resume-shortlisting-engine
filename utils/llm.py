@@ -113,7 +113,7 @@ class LLMClient:
             try:
                 self.client = anthropic.Anthropic(api_key=anthropic_key)
                 self.provider = "anthropic"
-                self.model_name = os.getenv("ANTHROPIC_MODEL", "claude-3-haiku-20240307")
+                self.model_name = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
                 logger.info(f"Initialized Anthropic Client with model {self.model_name}")
                 return
             except Exception as e:
