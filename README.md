@@ -4,6 +4,8 @@ A multi-agent pipeline that parses resumes (including scanned PDFs), extracts st
 
 > **Decision support, not decision making.** Scores are meant to help a human reviewer prioritise resumes. Always review shortlisted *and* rejected candidates manually.
 
+![Landing page](docs/landing.png)
+
 ## Features
 
 - **Layout-aware PDF parsing**: splits multi-column templates by geometry (PyMuPDF) so sections don't interleave.
@@ -32,6 +34,8 @@ Supported providers: Gemini, OpenAI, Anthropic (see `.env.example` for optional 
 ```bash
 streamlit run app.py
 ```
+
+Upload PDFs in the sidebar and click **Process & Rank**. Use the top navigation to switch between **Home**, **Leaderboard**, **Inspector** (per-candidate drill-down) and **Reports** (CSV / JSON / Markdown downloads).
 
 ### Command line
 

@@ -13,7 +13,8 @@ HAS_OPENAI = False
 HAS_ANTHROPIC = False
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types as genai_types
     HAS_GEMINI = True
 except ImportError:
     pass
@@ -87,7 +88,7 @@ class LLMClient:
         gemini_key = os.getenv("GEMINI_API_KEY")
         if gemini_key and HAS_GEMINI:
             try:
-                genai.configure(api_key=gemini_key)
+                self.gemini_client = genai.Client(api_key=gemini_key)
                 self.provider = "gemini"
                 self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
                 logger.info(f"Initialized Gemini Client with model {self.model_name}")
@@ -129,11 +130,11 @@ class LLMClient:
         """Sends a query to the initialized LLM provider and returns the raw string response."""
         if self.provider == "gemini":
             try:
-                model = genai.GenerativeModel(
-                    model_name=self.model_name,
-                    system_instruction=system_instruction
+                response = self.gemini_client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=genai_types.GenerateContentConfig(system_instruction=system_instruction),
                 )
-                response = model.generate_content(prompt)
                 return response.text
             except Exception as e:
                 logger.error(f"Gemini generation failed: {e}")
@@ -199,13 +200,13 @@ class LLMClient:
 
         if self.provider == "gemini":
             try:
-                model = genai.GenerativeModel(
-                    model_name=self.model_name,
-                    system_instruction=system_instruction
-                )
-                response = model.generate_content(
-                    full_prompt,
-                    generation_config={"response_mime_type": "application/json"}
+                response = self.gemini_client.models.generate_content(
+                    model=self.model_name,
+                    contents=full_prompt,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        response_mime_type="application/json",
+                    ),
                 )
                 raw_json = response.text.strip()
                 # Clean up any potential markdown wrap if Gemini failed to obey
