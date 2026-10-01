@@ -18,7 +18,7 @@ st.set_page_config(
 load_dotenv()
 
 # Import pipeline elements
-from main import process_resumes, build_pipeline_agents, DEFAULT_JDS
+from jd_defaults import DEFAULT_JDS  # light import; heavy ML modules load lazily (see get_cached_agents)
 from models.schemas import ParsedJD
 from utils.llm import LLMClient
 from agents.jd_parser import JDParserAgent
@@ -33,6 +33,7 @@ def get_cached_agents():
     st.cache_resource ensures this heavy initialization happens once per server process
     and is reused across reruns/clicks.
     """
+    from main import build_pipeline_agents  # lazy: imports torch/EasyOCR/spaCy only when first needed
     return build_pipeline_agents()
 
 
@@ -146,6 +147,13 @@ st.markdown("""
     .planet-label.l { left:56px; } .planet-label.r { right:56px; }
     .horizon { position:absolute; left:-25%; right:-25%; bottom:-420px; height:520px; border-radius:50%; z-index:0;
         background:radial-gradient(ellipse at 50% 0%,#bfe3ff 0%,#3b8df0 8%,#1646a8 28%,#0a1f55 55%,#050a18 75%); box-shadow:0 -6px 70px rgba(59,130,246,.65); }
+    .st-key-nav_view [role="radiogroup"] { justify-content:flex-end; gap:28px; }
+    .st-key-nav_view label { padding:6px 0 8px; cursor:pointer; border-bottom:2px solid transparent; }
+    .st-key-nav_view label > div:first-child { display:none; }
+    .st-key-nav_view label p { font-size:.78rem; font-weight:600; color:var(--ink); margin:0; }
+    .st-key-nav_view label:has(input:checked) { border-bottom-color:var(--accent); }
+    .st-key-nav_view label:hover p { color:var(--accent); }
+    a.hero-cta { text-decoration:none; } a.hero-cta:hover { box-shadow:0 0 40px rgba(125,211,252,.6); }
     @media (max-width:768px) { .hero-title { font-size:3.2rem !important; } .planet,.planet-label,.nav-links span { display:none; } }
 </style>
 """, unsafe_allow_html=True)
@@ -329,15 +337,18 @@ if process_btn:
     pipeline_ok = False
     with st.spinner("Running multi-agent pipeline..."):
         try:
+            agents = get_cached_agents()
+            from main import process_resumes
             candidates, report_paths = process_resumes(
                 resumes_dir=str(temp_dir),
                 parsed_jd=parsed_jd,
                 limit=testing_limit,
-                agents=get_cached_agents(),
+                agents=agents,
                 progress_cb=on_progress
             )
             st.session_state.ranked_candidates = candidates
             st.session_state.report_paths = report_paths
+            st.session_state.nav_view = "Leaderboard"
             pipeline_ok = True
         except Exception as e:
             st.error(f"Pipeline crashed: {e}")
@@ -410,278 +421,296 @@ def render_section_header(icon, text):
 # ──────────────────────────────────────────────────────────────────────────────
 # DASHBOARD VIEW — After Processing
 # ──────────────────────────────────────────────────────────────────────────────
-if st.session_state.ranked_candidates:
+# ──────────────────────────────────────────────────────────────────────────────
+# TOP NAVIGATION (real, clickable)
+# ──────────────────────────────────────────────────────────────────────────────
+if "nav_view" not in st.session_state:
+    st.session_state.nav_view = "Home"
+if st.query_params.get("start"):
+    st.toast("Upload PDF resumes in the left sidebar (tap the arrow at top-left on mobile), then click Process & Rank.", icon="📄")
+    st.query_params.clear()
+_n1, _n2, _n3 = st.columns([1.1, 2.2, 0.5])
+with _n1:
+    st.markdown('<div class="nav-logo" style="padding-top:8px;">resume<b>engine</b></div>', unsafe_allow_html=True)
+with _n2:
+    view = st.radio("Navigation", ["Home", "Leaderboard", "Inspector", "Reports"], horizontal=True, key="nav_view", label_visibility="collapsed")
+with _n3:
+    st.markdown('<a class="nav-pill" href="https://github.com/Sinchanak-212/resume-shortlisting-engine" target="_blank">GitHub</a>', unsafe_allow_html=True)
+
+if st.session_state.ranked_candidates and view != "Home":
     candidates = st.session_state.ranked_candidates
     jd = st.session_state.current_jd
     reports = st.session_state.report_paths
+    if view == "Leaderboard":
 
-    # ── KPI Metrics Bar ────────────────────────────────────────────────
-    shortlisted_cnt = len([c for c in candidates if c.is_shortlisted])
-    reserve_cnt = len([c for c in candidates if c.is_reserve])
-    fail_cnt = len([c for c in candidates if c.parse_quality == "Failed"])
+        # ── KPI Metrics Bar ────────────────────────────────────────────────
+        shortlisted_cnt = len([c for c in candidates if c.is_shortlisted])
+        reserve_cnt = len([c for c in candidates if c.is_reserve])
+        fail_cnt = len([c for c in candidates if c.parse_quality == "Failed"])
 
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-icon">👥</div>
-            <div class="kpi-value kpi-accent-blue">{len(candidates)}</div>
-            <div class="kpi-label">Candidates Evaluated</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon">✅</div>
-            <div class="kpi-value kpi-accent-green">{shortlisted_cnt}</div>
-            <div class="kpi-label">Shortlisted (Slots: {jd.slots})</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon">⏳</div>
-            <div class="kpi-value kpi-accent-amber">{reserve_cnt}</div>
-            <div class="kpi-label">Reserve List</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon">⚠️</div>
-            <div class="kpi-value kpi-accent-red">{fail_cnt}</div>
-            <div class="kpi-label">Failed Parses</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── Leaderboard ────────────────────────────────────────────────────
-    st.markdown(render_section_header("🏆", "Shortlisting Leaderboard"), unsafe_allow_html=True)
-
-    with st.expander("🔎 Filter Rankings", expanded=False):
-        f_col1, f_col2 = st.columns([1, 1])
-        with f_col1:
-            confidence_filter = st.multiselect(
-                "Confidence Level",
-                options=["High", "Medium", "Low"],
-                default=["High", "Medium", "Low"]
-            )
-        with f_col2:
-            show_only_shortlisted = st.checkbox("Show shortlisted only", value=False)
-
-    # Build leaderboard rows
-    rows = []
-    for rank, c in enumerate(candidates, 1):
-        status = "Shortlisted" if c.is_shortlisted else ("Reserve" if c.is_reserve else "Failed Parse")
-
-        if c.confidence not in confidence_filter:
-            continue
-        if show_only_shortlisted and not c.is_shortlisted:
-            continue
-
-        rows.append({
-            "Rank": str(rank) if status != "Failed Parse" else "—",
-            "Candidate": c.candidate_name,
-            "Score": c.score,
-            "CGPA": c.normalized_cgpa,
-            "Status": status,
-            "Confidence": c.confidence,
-            "Parse Quality": c.parse_quality,
-            "Resume File": c.resume_file
-        })
-
-    df_leaderboard = pd.DataFrame(rows)
-
-    if not df_leaderboard.empty:
-        st.dataframe(
-            df_leaderboard,
-            use_container_width=True,
-            height=min(400, 45 + len(rows) * 38),
-            column_config={
-                "Score": st.column_config.ProgressColumn(
-                    "Match Score",
-                    min_value=0.0,
-                    max_value=100.0,
-                    format="%.1f"
-                ),
-                "CGPA": st.column_config.NumberColumn(
-                    "Norm. CGPA",
-                    format="%.2f"
-                ),
-            }
-        )
-    else:
-        st.info("No candidates match the selected filters.")
-
-    # ── Downloads ──────────────────────────────────────────────────────
-    st.markdown(render_section_header("📥", "Download Reports"), unsafe_allow_html=True)
-
-    dl1, dl2, dl3, dl4 = st.columns(4)
-    report_configs = [
-        (dl1, "csv", "📊 Leaderboard CSV", "text/csv"),
-        (dl2, "json", "📋 Full JSON Data", "application/json"),
-        (dl3, "markdown", "📝 Markdown Report", "text/markdown"),
-        (dl4, "quality_report", "🔍 Parse Quality CSV", "text/csv"),
-    ]
-    for col, key, label, mime in report_configs:
-        with col:
-            if os.path.exists(reports[key]):
-                with open(reports[key], "r", encoding="utf-8") as f:
-                    st.download_button(
-                        label,
-                        data=f.read(),
-                        file_name=os.path.basename(reports[key]),
-                        mime=mime,
-                        use_container_width=True
-                    )
-
-    st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
-    # ── Candidate Deep-Dive Inspector ──────────────────────────────────
-    st.markdown(render_section_header("🔍", "Candidate Deep-Dive Inspector"), unsafe_allow_html=True)
-
-    candidate_names = [c.candidate_name for c in candidates]
-    selected_candidate_name = st.selectbox(
-        "Select Candidate to Inspect",
-        candidate_names,
-        label_visibility="collapsed"
-    )
-
-    c_idx = candidate_names.index(selected_candidate_name)
-    cand = candidates[c_idx]
-
-    # Profile header
-    initials = "".join([w[0].upper() for w in cand.candidate_name.split()[:2]]) if cand.candidate_name.split() else "?"
-    status_badge = get_status_badge(cand)
-    conf_badge = get_confidence_badge(cand.confidence)
-
-    st.markdown(f"""
-    <div class="inspector-card">
-        <div class="profile-header">
-            <div class="profile-avatar">{initials}</div>
-            <div>
-                <div class="profile-name">{cand.candidate_name}</div>
-                <div class="profile-file">{cand.resume_file}</div>
+        st.markdown(f"""
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">👥</div>
+                <div class="kpi-value kpi-accent-blue">{len(candidates)}</div>
+                <div class="kpi-label">Candidates Evaluated</div>
             </div>
-            <div style="margin-left: auto; display:flex; gap:8px; flex-wrap:wrap;">
-                {status_badge}
-                {conf_badge}
+            <div class="kpi-card">
+                <div class="kpi-icon">✅</div>
+                <div class="kpi-value kpi-accent-green">{shortlisted_cnt}</div>
+                <div class="kpi-label">Shortlisted (Slots: {jd.slots})</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⏳</div>
+                <div class="kpi-value kpi-accent-amber">{reserve_cnt}</div>
+                <div class="kpi-label">Reserve List</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⚠️</div>
+                <div class="kpi-value kpi-accent-red">{fail_cnt}</div>
+                <div class="kpi-label">Failed Parses</div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # Tabbed Inspector
-    tab_profile, tab_skills, tab_explanation = st.tabs(["📊 Profile & Score", "🛠️ Skill Matching", "💡 AI Explanation"])
+        # ── Leaderboard ────────────────────────────────────────────────────
+        st.markdown(render_section_header("🏆", "Shortlisting Leaderboard"), unsafe_allow_html=True)
 
-    with tab_profile:
-        p_col1, p_col2 = st.columns([1, 2])
+        with st.expander("🔎 Filter Rankings", expanded=False):
+            f_col1, f_col2 = st.columns([1, 1])
+            with f_col1:
+                confidence_filter = st.multiselect(
+                    "Confidence Level",
+                    options=["High", "Medium", "Low"],
+                    default=["High", "Medium", "Low"]
+                )
+            with f_col2:
+                show_only_shortlisted = st.checkbox("Show shortlisted only", value=False)
 
-        with p_col1:
-            st.markdown(render_score_ring(cand.score), unsafe_allow_html=True)
+        # Build leaderboard rows
+        rows = []
+        for rank, c in enumerate(candidates, 1):
+            status = "Shortlisted" if c.is_shortlisted else ("Reserve" if c.is_reserve else "Failed Parse")
 
-        with p_col2:
-            st.markdown(f"""
-            <div class="inspector-card" style="padding:20px;">
-                <div class="stat-row">
-                    <span class="stat-label">Match Score</span>
-                    <span class="stat-value" style="color:{get_score_color(cand.score)}">{cand.score:.2f} / 100</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Normalized CGPA</span>
-                    <span class="stat-value">{cand.normalized_cgpa:.2f} / 10.0</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Parse Quality</span>
-                    <span class="stat-value">{cand.parse_quality}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Confidence</span>
-                    <span class="stat-value">{cand.confidence}</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Resume File</span>
-                    <span class="stat-value" style="font-family:'SF Mono','Fira Code',monospace; font-size:0.82rem;">{cand.resume_file}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            if c.confidence not in confidence_filter:
+                continue
+            if show_only_shortlisted and not c.is_shortlisted:
+                continue
 
-    with tab_skills:
-        # Skill Match Chips
-        if cand.skills_matched:
-            st.markdown("##### Skill-to-JD Match Results")
+            rows.append({
+                "Rank": str(rank) if status != "Failed Parse" else "—",
+                "Candidate": c.candidate_name,
+                "Score": c.score,
+                "CGPA": c.normalized_cgpa,
+                "Status": status,
+                "Confidence": c.confidence,
+                "Parse Quality": c.parse_quality,
+                "Resume File": c.resume_file
+            })
 
-            skill_chips_html = ""
-            for match in cand.skills_matched:
-                chip_class = f"chip-{match.match_type}"
-                icon_map = {"exact": "✓", "synonym": "≈", "partial": "◐", "implicit": "◐", "none": "✗"}
-                icon = icon_map.get(match.match_type, "•")
-                skill_chips_html += f'<span class="skill-chip {chip_class}">{icon} {match.skill}</span>'
+        df_leaderboard = pd.DataFrame(rows)
 
-            st.markdown(f'<div style="margin-bottom:20px;">{skill_chips_html}</div>', unsafe_allow_html=True)
-
-            # Legend
-            st.markdown("""
-            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:0.78rem; color:#64748b;">
-                <span><span style="color:#34d399">✓</span> Exact</span>
-                <span><span style="color:#7dd3fc">≈</span> Synonym</span>
-                <span><span style="color:#fbbf24">◐</span> Partial/Implicit</span>
-                <span><span style="color:#f87171">✗</span> Not Found</span>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Detailed table
-            rows_match = []
-            for match in cand.skills_matched:
-                rows_match.append({
-                    "Skill": match.skill,
-                    "Match": match.match_type.upper(),
-                    "Similarity": match.score,
-                    "Matched Term": match.matched_term or "—",
-                    "Reason": match.reason
-                })
-
-            df_skills = pd.DataFrame(rows_match)
+        if not df_leaderboard.empty:
             st.dataframe(
-                df_skills,
+                df_leaderboard,
                 use_container_width=True,
+                height=min(400, 45 + len(rows) * 38),
                 column_config={
-                    "Similarity": st.column_config.ProgressColumn(
-                        "Similarity",
+                    "Score": st.column_config.ProgressColumn(
+                        "Match Score",
                         min_value=0.0,
-                        max_value=1.0,
-                        format="%.3f"
+                        max_value=100.0,
+                        format="%.1f"
+                    ),
+                    "CGPA": st.column_config.NumberColumn(
+                        "Norm. CGPA",
+                        format="%.2f"
                     ),
                 }
             )
         else:
-            st.info("No skill matches computed (failed or empty parse).")
+            st.info("No candidates match the selected filters.")
 
-        # Extracted skills
-        if cand.skills_extracted:
-            st.markdown("##### All Extracted Skills")
-            extracted_html = "".join(
-                [f'<span class="skill-chip chip-extracted">{s}</span>' for s in cand.skills_extracted]
-            )
-            st.markdown(extracted_html, unsafe_allow_html=True)
+    if view == "Reports":
+        # ── Downloads ──────────────────────────────────────────────────────
+        st.markdown(render_section_header("📥", "Download Reports"), unsafe_allow_html=True)
 
-    with tab_explanation:
-        st.markdown("##### 🧠 AI-Generated Match Justification")
+        dl1, dl2, dl3, dl4 = st.columns(4)
+        report_configs = [
+            (dl1, "csv", "📊 Leaderboard CSV", "text/csv"),
+            (dl2, "json", "📋 Full JSON Data", "application/json"),
+            (dl3, "markdown", "📝 Markdown Report", "text/markdown"),
+            (dl4, "quality_report", "🔍 Parse Quality CSV", "text/csv"),
+        ]
+        for col, key, label, mime in report_configs:
+            with col:
+                if reports.get(key) and os.path.exists(reports[key]):
+                    with open(reports[key], "r", encoding="utf-8") as f:
+                        st.download_button(
+                            label,
+                            data=f.read(),
+                            file_name=os.path.basename(reports[key]),
+                            mime=mime,
+                            use_container_width=True
+                        )
 
-        if cand.explanation:
-            bullets_html = '<ul class="explanation-list">'
-            for bullet in cand.explanation:
-                bullets_html += f"""
-                <li class="explanation-item">
-                    <span class="explanation-bullet">▸</span>
-                    <span>{bullet}</span>
-                </li>
-                """
-            bullets_html += "</ul>"
-            st.markdown(bullets_html, unsafe_allow_html=True)
-        else:
-            st.info("No explanation generated for this candidate.")
+
+    if view == "Inspector":
+        # ── Candidate Deep-Dive Inspector ──────────────────────────────────
+        st.markdown(render_section_header("🔍", "Candidate Deep-Dive Inspector"), unsafe_allow_html=True)
+
+        candidate_names = [c.candidate_name for c in candidates]
+        selected_candidate_name = st.selectbox(
+            "Select Candidate to Inspect",
+            candidate_names,
+            label_visibility="collapsed"
+        )
+
+        c_idx = candidate_names.index(selected_candidate_name)
+        cand = candidates[c_idx]
+
+        # Profile header
+        initials = "".join([w[0].upper() for w in cand.candidate_name.split()[:2]]) if cand.candidate_name.split() else "?"
+        status_badge = get_status_badge(cand)
+        conf_badge = get_confidence_badge(cand.confidence)
+
+        st.markdown(f"""
+        <div class="inspector-card">
+            <div class="profile-header">
+                <div class="profile-avatar">{initials}</div>
+                <div>
+                    <div class="profile-name">{cand.candidate_name}</div>
+                    <div class="profile-file">{cand.resume_file}</div>
+                </div>
+                <div style="margin-left: auto; display:flex; gap:8px; flex-wrap:wrap;">
+                    {status_badge}
+                    {conf_badge}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Tabbed Inspector
+        tab_profile, tab_skills, tab_explanation = st.tabs(["📊 Profile & Score", "🛠️ Skill Matching", "💡 AI Explanation"])
+
+        with tab_profile:
+            p_col1, p_col2 = st.columns([1, 2])
+
+            with p_col1:
+                st.markdown(render_score_ring(cand.score), unsafe_allow_html=True)
+
+            with p_col2:
+                st.markdown(f"""
+                <div class="inspector-card" style="padding:20px;">
+                    <div class="stat-row">
+                        <span class="stat-label">Match Score</span>
+                        <span class="stat-value" style="color:{get_score_color(cand.score)}">{cand.score:.2f} / 100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Normalized CGPA</span>
+                        <span class="stat-value">{cand.normalized_cgpa:.2f} / 10.0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Parse Quality</span>
+                        <span class="stat-value">{cand.parse_quality}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Confidence</span>
+                        <span class="stat-value">{cand.confidence}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Resume File</span>
+                        <span class="stat-value" style="font-family:'SF Mono','Fira Code',monospace; font-size:0.82rem;">{cand.resume_file}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        with tab_skills:
+            # Skill Match Chips
+            if cand.skills_matched:
+                st.markdown("##### Skill-to-JD Match Results")
+
+                skill_chips_html = ""
+                for match in cand.skills_matched:
+                    chip_class = f"chip-{match.match_type}"
+                    icon_map = {"exact": "✓", "synonym": "≈", "partial": "◐", "implicit": "◐", "none": "✗"}
+                    icon = icon_map.get(match.match_type, "•")
+                    skill_chips_html += f'<span class="skill-chip {chip_class}">{icon} {match.skill}</span>'
+
+                st.markdown(f'<div style="margin-bottom:20px;">{skill_chips_html}</div>', unsafe_allow_html=True)
+
+                # Legend
+                st.markdown("""
+                <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:0.78rem; color:#64748b;">
+                    <span><span style="color:#34d399">✓</span> Exact</span>
+                    <span><span style="color:#7dd3fc">≈</span> Synonym</span>
+                    <span><span style="color:#fbbf24">◐</span> Partial/Implicit</span>
+                    <span><span style="color:#f87171">✗</span> Not Found</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Detailed table
+                rows_match = []
+                for match in cand.skills_matched:
+                    rows_match.append({
+                        "Skill": match.skill,
+                        "Match": match.match_type.upper(),
+                        "Similarity": match.score,
+                        "Matched Term": match.matched_term or "—",
+                        "Reason": match.reason
+                    })
+
+                df_skills = pd.DataFrame(rows_match)
+                st.dataframe(
+                    df_skills,
+                    use_container_width=True,
+                    column_config={
+                        "Similarity": st.column_config.ProgressColumn(
+                            "Similarity",
+                            min_value=0.0,
+                            max_value=1.0,
+                            format="%.3f"
+                        ),
+                    }
+                )
+            else:
+                st.info("No skill matches computed (failed or empty parse).")
+
+            # Extracted skills
+            if cand.skills_extracted:
+                st.markdown("##### All Extracted Skills")
+                extracted_html = "".join(
+                    [f'<span class="skill-chip chip-extracted">{s}</span>' for s in cand.skills_extracted]
+                )
+                st.markdown(extracted_html, unsafe_allow_html=True)
+
+        with tab_explanation:
+            st.markdown("##### 🧠 AI-Generated Match Justification")
+
+            if cand.explanation:
+                bullets_html = '<ul class="explanation-list">'
+                for bullet in cand.explanation:
+                    bullets_html += f"""
+                    <li class="explanation-item">
+                        <span class="explanation-bullet">▸</span>
+                        <span>{bullet}</span>
+                    </li>
+                    """
+                bullets_html += "</ul>"
+                st.markdown(bullets_html, unsafe_allow_html=True)
+            else:
+                st.info("No explanation generated for this candidate.")
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # LANDING PAGE — Before Processing (Hero + Features)
 # ──────────────────────────────────────────────────────────────────────────────
 else:
+    if view != "Home":
+        st.info("No results yet. Go to Home, upload resumes in the sidebar, then click Process & Rank.")
+        st.stop()
+
     st.markdown("""
-    <div class="nav">
-        <div class="nav-logo">resume<b>engine</b></div>
-        <div class="nav-links"><span class="on">Upload</span><span>Leaderboard</span><span>Inspector</span><span>Reports</span>
-            <a class="nav-pill" href="https://github.com/Sinchanak-212/resume-shortlisting-engine" target="_blank">GitHub</a></div>
-    </div>
     <div class="hero-container">
         <div class="planet l"></div><div class="planet-label l">PARSE</div>
         <div class="planet r"></div><div class="planet-label r">RANK</div>
@@ -689,7 +718,7 @@ else:
         <div class="hero-title">SHORTLIST</div>
         <div class="hero-line"></div>
         <div class="hero-subtitle">Parse, match and explainably rank candidates against your job description. Handles scanned PDFs, multi-column layouts and batch uploads in minutes.</div>
-        <div class="hero-cta">GET STARTED</div>
+        <a class="hero-cta" href="?start=1" target="_self">GET STARTED</a>
         <div class="hero-hint">Upload resumes in the sidebar to begin</div>
         <div class="horizon"></div>
     </div>

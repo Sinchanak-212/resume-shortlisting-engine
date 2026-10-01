@@ -5,3 +5,10 @@ backgroundColor = "#050a18"
 secondaryBackgroundColor = "#0b1226"
 textColor = "#e8eefc"
 font = "sans serif"
+
+[server]
+# Streamlit's file watcher walks torch's lazy modules and makes startup/reruns very slow on Windows
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
