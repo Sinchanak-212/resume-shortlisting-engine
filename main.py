@@ -105,6 +105,20 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
     # app it happened on every "Process & Rank" click, adding tens of seconds of pure
     # model-loading overhead each time. See app.py: agents are now built once via
     # st.cache_resource and passed in here.
+    resumes_path = Path(resumes_dir)
+    if not resumes_path.exists():
+        raise FileNotFoundError(f"Resumes directory not found: {resumes_dir}")
+
+    pdf_files = list(resumes_path.glob("*.pdf"))
+    if not pdf_files:
+        raise ValueError(f"No PDF files found in directory: {resumes_dir}")
+
+    logger.info(f"Found {len(pdf_files)} PDF resumes to process.")
+    
+    if limit > 0:
+        pdf_files = pdf_files[:limit]
+        logger.info(f"Limiting execution to first {limit} files.")
+
     if agents is None:
         agents = build_pipeline_agents()
 
@@ -121,20 +135,6 @@ def process_resumes(resumes_dir: str, parsed_jd: ParsedJD, limit: int = -1, agen
 
     results = []
     
-    resumes_path = Path(resumes_dir)
-    if not resumes_path.exists():
-        raise FileNotFoundError(f"Resumes directory not found: {resumes_dir}")
-
-    pdf_files = list(resumes_path.glob("*.pdf"))
-    if not pdf_files:
-        raise ValueError(f"No PDF files found in directory: {resumes_dir}")
-
-    logger.info(f"Found {len(pdf_files)} PDF resumes to process.")
-    
-    if limit > 0:
-        pdf_files = pdf_files[:limit]
-        logger.info(f"Limiting execution to first {limit} files.")
-
     parse_lock = threading.Lock()  # OCR/torch models are not thread-safe; LLM + matching still run in parallel
 
     def _process_one(pdf_file):
